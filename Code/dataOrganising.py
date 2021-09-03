@@ -137,6 +137,6 @@ print(np.all(umpMaster.index == umpAvail.index))
 #%%
 umpMaster = pd.concat([umpMaster, umpAvail], axis = 1)
 umpMaster = umpMaster.rename(columns = {umpAvail.columns[0]: "Available"})
-cols = ["Age Group", "2 Games", "Available", "Playing", "Club",
+cols = ["Age Group", "Category", "2 Games", "Available", "Playing", "Club",
         "Additonal Notes", "Last Name", "First Name"]
 umpMaster = umpMaster[cols]
