@@ -149,6 +149,8 @@ umpMaster = umpMaster[cols]
 for entry in umpMaster.index:
     if umpMaster.loc[entry]['Available'] is None:
         umpMaster.loc[entry]['Available'] = allTimes
+#for index in umpMaster.index:
+#    print(umpMaster.loc[index]['Available'])
 
 #greedy algorithm:
 
@@ -156,7 +158,6 @@ for entry in umpMaster.index:
 u = [[] for i in range(games.shape[0])]
 games['ump'] = u
 games.set_index('Venue Name')
-num = 0
 for i in games.index:
     team = []
     time = games.loc[i]['Match Time']
@@ -165,14 +166,18 @@ for i in games.index:
     team.append(games.loc[i]['Team 1'])
     team.append(games.loc[i]['Team 2'])
     for j in umpMaster.index:
-        num+=1
         if umpMaster.loc[j]['Available'] is not None and type(umpMaster.loc[j]['Available']) is not dt.time:
             if time in umpMaster.loc[j]['Available'] and len(games.loc[i]['ump']) < 1:
-                umpMaster.loc[j]['Available'] = umpMaster.loc[j]['Available'].remove(time)
+                print(umpMaster.loc[j]['Available'])
+                print(time)
+                umpMaster.loc[j]['Available'].remove(time)
+                print(umpMaster.loc[j]['Available'])
                 games.loc[i]['ump'].append(j)
-for index in games.index:
-    if games.loc[index]['ump'] == []:
-        print(index)
-
+#for index in games.index:
+#    if games.loc[index]['ump'] == []:
+#        print(index)
+#
+#for index in umpMaster.index:
+#    print(umpMaster.loc[index]['Available'])
 
 
