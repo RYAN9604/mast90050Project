@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime as dt
+import copy
 
 
 games = pd.read_excel('~/mast90050Project/Code/Data/Round4_LP.xlsx', engine='openpyxl')
@@ -52,18 +53,18 @@ for entry in playingUmps.index:
 
         if type(playtime) != type(np.nan) and playtime != None:
             playtime = playtime.strftime("%H:%M:%S")
-            times = playAllow[playtime]
+            times = copy.deepcopy(playAllow[playtime])
         else:
-            times = allTimes     
+            times = copy.deepcopy(allTimes)
         umpAvail.loc[entry][0] = times
     else: # add their available time
         playtime = playingUmps.loc[entry][0]
 
         if type(playtime) != type(np.nan):
             playtime = playtime.strftime("%H:%M:%S")
-            times = playAllow[playtime]
+            times = copy.deepcopy(playAllow[playtime])
         else:
-            times = allTimes
+            times = copy.deepcopy(allTimes)
         newrow = pd.DataFrame(0, index=[entry], columns=[umpAvail.columns[0]],
                               dtype=object)
         newrow.loc[entry][0] = times
@@ -79,7 +80,7 @@ for entry in umpMaster.index:
     if entry not in umpAvail.index:
         newrow = pd.DataFrame(0, index=[entry], columns=[umpAvail.columns[0]],
                               dtype=object)
-        newrow.loc[entry][0] = allTimes
+        newrow.loc[entry][0] = copy.deepcopy(allTimes)
         umpAvail = pd.concat([umpAvail, newrow])
 
 umpAvail = umpAvail.sort_index()    
@@ -88,7 +89,7 @@ umpMaster = umpMaster.sort_index()
 for entry in umpAvail.index:
     avail = umpAvail.loc[entry][0]
     if type(avail) == type(np.nan):
-        umpAvail.loc[entry][0] = allTimes
+        umpAvail.loc[entry][0] = copy.deepcopy(allTimes)
 umpMaster = umpMaster[0:120]
 umpAvail = umpAvail[0:120]
 
@@ -114,7 +115,7 @@ for ump in umpMaster.index:
 
 # Round specific availability changes        
 umpMaster.loc["Boulter, Oscar"]["2 Games"] = False
-umpAvail.loc["Boulter, Oscar"][0] = allTimes
+umpAvail.loc["Boulter, Oscar"][0] = copy.deepcopy(allTimes)
 umpAvail.loc["Collopy, John"][0] = allTimes[:-1]
 umpMaster.loc["Lee, Andrew"]["2 Games"] = False
 umpAvail.loc["Stacey, Joshua"][0] = ['13:00:00', '15:00:00']
@@ -168,14 +169,14 @@ for i in games.index:
     for j in umpMaster.index:
         if umpMaster.loc[j]['Available'] is not None and type(umpMaster.loc[j]['Available']) is not dt.time:
             if time in umpMaster.loc[j]['Available'] and len(games.loc[i]['ump']) < 1:
-                print(umpMaster.loc[j]['Available'])
-                print(time)
+                #print(umpMaster.loc[j]['Available'])
+                #print(time)
                 umpMaster.loc[j]['Available'].remove(time)
-                print(umpMaster.loc[j]['Available'])
+                #print(umpMaster.loc[j]['Available'])
                 games.loc[i]['ump'].append(j)
-#for index in games.index:
-#    if games.loc[index]['ump'] == []:
-#        print(index)
+for index in games.index:
+    if games.loc[index]['ump'] == []:
+        print(index)
 #
 #for index in umpMaster.index:
 #    print(umpMaster.loc[index]['Available'])
