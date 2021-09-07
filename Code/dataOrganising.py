@@ -4,12 +4,21 @@ import datetime as dt
 
 
 games = pd.read_excel('Data/Round4_LP.xlsx', engine='openpyxl')
-games = games.rename(columns={"Unnamed: 8": "Field.2"})
+games = games.rename(columns={"Unnamed: 9": "Field.2"})
 games["Field"] = np.nan
 games["Field.1"] = np.nan
 games["Field.2"] = np.nan
 games["Boundary"] = np.nan
 games["Boundary.1"] = np.nan
+
+club_names = []
+for index in games.index:
+    t1 = games.loc[index]["Team 1"].split()[0]
+    t2 = games.loc[index]["Team 2"].split()[0]
+    club_names.append([t1, t2])
+    
+games["Teams"] = club_names
+    
 
 umps = pd.read_excel('Data/LP_Umps2021.xlsx', engine='openpyxl')
 availability = pd.read_excel('Data/LP_Umps2021.xlsx', sheet_name="Availability",
@@ -29,11 +38,11 @@ playingUmps = playingUmps.set_index("Name")
 # Assign availability to playing umps        
 # Dictionary    playing time : [allowable umpiring times]
 allTimes = [dt.time(8,30), dt.time(10,0), dt.time(11,0), dt.time(11,30),
-            dt.time(13,0), dt.time(14,30), dt.time(15,0)]
+            dt.time(13,0), dt.time(13,30), dt.time(14,30), dt.time(15,0)]
 playAllow = {
     dt.time(8,30): [dt.time(11,0), dt.time(11,30), 
-            dt.time(13,0), dt.time(14,30), dt.time(15,0)],
-    dt.time(10,0): [dt.time(13,0), dt.time(14,30), 
+            dt.time(13,0), dt.time(13,30), dt.time(14,30), dt.time(15,0)],
+    dt.time(10,0): [dt.time(13,0), dt.time(13,30), dt.time(14,30), 
                           dt.time(15,0)],
     dt.time(11,0): [dt.time(8,30), dt.time(14,30), 
                           dt.time(15,0)],
