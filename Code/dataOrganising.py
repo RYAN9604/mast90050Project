@@ -5,12 +5,20 @@ import copy
 
 
 games = pd.read_excel('~/mast90050Project/Code/Data/Round4_LP.xlsx', engine='openpyxl')
-games = games.rename(columns={"Unnamed: 8": "Field.2"})
+games = games.rename(columns={"Unnamed: 9": "Field.2"})
 games["Field"] = np.nan
 games["Field.1"] = np.nan
 games["Field.2"] = np.nan
 games["Boundary"] = np.nan
 games["Boundary.1"] = np.nan
+
+club_names = []
+for index in games.index:
+    t1 = games.loc[index]["Team 1"].split()[0]
+    t2 = games.loc[index]["Team 2"].split()[0]
+    club_names.append([t1, t2])
+
+games["Teams"] = club_names
 
 umps = pd.read_excel('~/mast90050Project/Code/Data/LP_Umps2021.xlsx', engine='openpyxl')
 availability = pd.read_excel('~/mast90050Project/Code/Data/LP_Umps2021.xlsx', sheet_name="Availability",
@@ -29,21 +37,21 @@ playingUmps = playingUmps.set_index("Name")
         
 # Assign availability to playing umps        
 # Dictionary    playing time : [allowable umpiring times]
-allTimes = ['8:30:00', '10:00:00', '11:00:00', '11:30:00',
+allTimes = ['08:30:00', '10:00:00', '11:00:00', '11:30:00',
             '13:00:00', '14:30:00', '15:00:00']
 playAllow = {
-    '8:30:00': ['11:00:00', '11:30:00',
+    '08:30:00': ['11:00:00', '11:30:00',
             '13:00:00', '14:30:00', '15:00:00'],
     '10:00:00': ['13:00:00', '14:30:00',
                           '15:00:00'],
-    '11:00:00': ['8:30:00', '14:30:00',
+    '11:00:00': ['08:30:00', '14:30:00',
                           '15:00:00'],
-    '11:30:00': ['8:30:00', '14:30:00',
+    '11:30:00': ['08:30:00', '14:30:00',
                           '15:00:00'],
-    '13:00:00': ['8:30:00', '10:00:00'],
-    '14:30:00': ['8:30:00', '10:00:00',
+    '13:00:00': ['08:30:00', '10:00:00'],
+    '14:30:00': ['08:30:00', '10:00:00',
                           '11:30:00'],
-    '15:00:00': ['8:30:00', '10:00:00',
+    '15:00:00': ['08:30:00', '10:00:00',
                           '11:30:00']
     }
 
@@ -72,7 +80,7 @@ for entry in playingUmps.index:
         
 for entry in umpAvail.index:
     if entry not in umpMaster.index:
-        print(entry)
+        #print(entry)
         umpAvail = umpAvail.drop(entry)
     
 
@@ -94,8 +102,8 @@ umpMaster = umpMaster[0:120]
 umpAvail = umpAvail[0:120]
 
 
-print("\n******\n")
-print(np.all(umpMaster.index == umpAvail.index))
+#print("\n******\n")
+#print(np.all(umpMaster.index == umpAvail.index))
 #%% Assign umpires to clubs they play for
     
 team = [' ' for i in range(umpMaster.shape[0])]
@@ -130,15 +138,15 @@ umpAvail.loc["Walsh, Austin"][0] = ['13:00:00', '15:00:00']
 #%% Remove unavailable umpires
 for ump in umpAvail.index:
     if umpAvail.loc[ump][0] == "Unavailable":
-        print(ump)
+        #print(ump)
         umpMaster = umpMaster.drop(ump)
         umpAvail = umpAvail.drop(ump)
-print("\n******\n")     
-for ump in playingUmps.index:
-    if ump not in umpMaster.index:
-        print(ump)
-
-print(np.all(umpMaster.index == umpAvail.index))
+#print("\n******\n")
+#for ump in playingUmps.index:
+#    if ump not in umpMaster.index:
+#        print(ump)
+#
+#print(np.all(umpMaster.index == umpAvail.index))
 
 #%%
 umpMaster = pd.concat([umpMaster, umpAvail], axis = 1)
@@ -152,34 +160,67 @@ for entry in umpMaster.index:
         umpMaster.loc[entry]['Available'] = allTimes
 #for index in umpMaster.index:
 #    print(umpMaster.loc[index]['Available'])
+umpMaster.loc['Parker, Cameron']['Available']= ['08:30:00']
+#for j in umpMaster.index:
+#    print(umpMaster.loc[j]['Club'])
+#for i in games.index:
+#    print(games.loc[i]['Teams'])
 
 #greedy algorithm:
 
 
 u = [[] for i in range(games.shape[0])]
+v = [[] for i in range(umpMaster.shape[0])]
 games['ump'] = u
+umpMaster['game'] = v
 games.set_index('Venue Name')
 for i in games.index:
-    team = []
+    #team = []
     time = games.loc[i]['Match Time']
     time = str(time)
     Category = games.loc[i]['Category']
-    team.append(games.loc[i]['Team 1'])
-    team.append(games.loc[i]['Team 2'])
+    team = games.loc[i]['Teams']
+    #team.append(games.loc[i]['Team 1'])
+    #team.append(games.loc[i]['Team 2'])
     for j in umpMaster.index:
-        if umpMaster.loc[j]['Available'] is not None and type(umpMaster.loc[j]['Available']) is not dt.time:
-            if time in umpMaster.loc[j]['Available'] and umpMaster.loc[j]['Category'] == Category and len(games.loc[i]['ump']) < 3:
+        if umpMaster.loc[j]['Available'] is not None:
+            if time in umpMaster.loc[j]['Available'] and umpMaster.loc[j]['Category'] == Category \
+                    and umpMaster.loc[j]['Club'] not in team and len(games.loc[i]['ump']) < 1  \
+                    and ((len(umpMaster.loc[j]['game']) < 2 and umpMaster.loc[j]['2 Games']) or (len(umpMaster.loc[j]['game'])<1 and not umpMaster.loc[j]['2 Games'])):
                 #print(umpMaster.loc[j]['Available'])
                 #print(time)
                 umpMaster.loc[j]['Available'].remove(time)
                 #print(umpMaster.loc[j]['Available'])
                 games.loc[i]['ump'].append(j)
+                umpMaster.loc[j]['game'].append(i)
+
+for i in games.index:
+    #team = []
+    time = games.loc[i]['Match Time']
+    time = str(time)
+    Category = games.loc[i]['Category']
+    team = games.loc[i]['Teams']
+    #team.append(games.loc[i]['Team 1'])
+    #team.append(games.loc[i]['Team 2'])
+    for j in umpMaster.index:
+        if umpMaster.loc[j]['Available'] is not None:
+            if time in umpMaster.loc[j]['Available'] and umpMaster.loc[j]['Category'] == Category \
+                    and umpMaster.loc[j]['Club'] not in team and len(games.loc[i]['ump']) < 2 \
+                    and ((len(umpMaster.loc[j]['game']) < 2  and umpMaster.loc[j]['2 Games']) or (len(umpMaster.loc[j]['game'])<1 and not umpMaster.loc[j]['2 Games'])):
+                #print(umpMaster.loc[j]['Available'])
+                #print(time)
+                umpMaster.loc[j]['Available'].remove(time)
+                #print(umpMaster.loc[j]['Available'])
+                games.loc[i]['ump'].append(j)
+                umpMaster.loc[j]['game'].append(i)
+
 for index in games.index:
     print(games.loc[index]['ump'])
 
     if games.loc[index]['ump'] == []:
+        print(index)
         print(games.loc[index]['Match Time'])
-#
+
 #for index in umpMaster.index:
 #    print(umpMaster.loc[index]['Available'])
 
