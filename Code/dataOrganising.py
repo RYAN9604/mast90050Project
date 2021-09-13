@@ -174,6 +174,9 @@ v = [[] for i in range(umpMaster.shape[0])]
 games['ump'] = u
 umpMaster['game'] = v
 games.set_index('Venue Name')
+
+#minimize category difference
+'''
 for i in games.index:
     #team = []
     time = games.loc[i]['Match Time']
@@ -203,7 +206,6 @@ for i in games.index:
     #team.append(games.loc[i]['Team 1'])
     #team.append(games.loc[i]['Team 2'])
     for j in umpMaster.index:
-        if umpMaster.loc[j]['Available'] is not None:
             if time in umpMaster.loc[j]['Available'] and umpMaster.loc[j]['Category'] == Category \
                     and umpMaster.loc[j]['Club'] not in team and len(games.loc[i]['ump']) < 2 \
                     and ((len(umpMaster.loc[j]['game']) < 2  and umpMaster.loc[j]['2 Games']) or (len(umpMaster.loc[j]['game'])<1 and not umpMaster.loc[j]['2 Games'])):
@@ -213,15 +215,50 @@ for i in games.index:
                 #print(umpMaster.loc[j]['Available'])
                 games.loc[i]['ump'].append(j)
                 umpMaster.loc[j]['game'].append(i)
-
-for index in games.index:
-    print(games.loc[index]['ump'])
-
-    if games.loc[index]['ump'] == []:
-        print(index)
-        print(games.loc[index]['Match Time'])
+'''
+#for index in games.index:
+#    print(games.loc[index]['ump'])
+#
+#    if games.loc[index]['ump'] == []:
+#        print(index)
+#        print(games.loc[index]['Match Time'])
 
 #for index in umpMaster.index:
 #    print(umpMaster.loc[index]['Available'])
 
+
+#same location
+
+for j in umpMaster.index:
+    for i in games.index:
+        time = games.loc[i]['Match Time']
+        time = str(time)
+        Category = games.loc[i]['Category']
+        team = games.loc[i]['Teams']
+        if time in umpMaster.loc[j]['Available']  \
+            and umpMaster.loc[j]['Club'] not in team \
+            and (umpMaster.loc[j]['game'] == [] or (i in umpMaster.loc[j]['game'] and umpMaster.loc[j]['2 Games'] and len(umpMaster.loc[j]['game'])<2))\
+            and len(games.loc[i]['ump']) < 1:
+            umpMaster.loc[j]['Available'].remove(time)
+            games.loc[i]['ump'].append(j)
+            umpMaster.loc[j]['game'].append(i)
+
+for j in umpMaster.index:
+    for i in games.index:
+        time = games.loc[i]['Match Time']
+        time = str(time)
+        Category = games.loc[i]['Category']
+        team = games.loc[i]['Teams']
+        if time in umpMaster.loc[j]['Available']  \
+            and umpMaster.loc[j]['Club'] not in team \
+            and (umpMaster.loc[j]['game'] == [] or (i in umpMaster.loc[j]['game'] and umpMaster.loc[j]['2 Games'] and len(umpMaster.loc[j]['game'])<2))\
+            and len(games.loc[i]['ump']) < 2:
+            umpMaster.loc[j]['Available'].remove(time)
+            games.loc[i]['ump'].append(j)
+            umpMaster.loc[j]['game'].append(i)
+
+f = open('/home/mi/mast90050Project/Code/outputForSameLocation.txt', 'a')
+for index in games.index:
+    f.write(str(games.loc[index]['ump']))
+    f.write('\n')
 
