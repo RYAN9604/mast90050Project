@@ -168,15 +168,17 @@ for i in games.index:
     team.append(games.loc[i]['Team 2'])
     for j in umpMaster.index:
         if umpMaster.loc[j]['Available'] is not None and type(umpMaster.loc[j]['Available']) is not dt.time:
-            if time in umpMaster.loc[j]['Available'] and len(games.loc[i]['ump']) < 1:
+            if time in umpMaster.loc[j]['Available'] and umpMaster.loc[j]['Category'] == Category and len(games.loc[i]['ump']) < 3:
                 #print(umpMaster.loc[j]['Available'])
                 #print(time)
                 umpMaster.loc[j]['Available'].remove(time)
                 #print(umpMaster.loc[j]['Available'])
                 games.loc[i]['ump'].append(j)
 for index in games.index:
+    print(games.loc[index]['ump'])
+
     if games.loc[index]['ump'] == []:
-        print(index)
+        print(games.loc[index]['Match Time'])
 #
 #for index in umpMaster.index:
 #    print(umpMaster.loc[index]['Available'])
