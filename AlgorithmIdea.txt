@@ -1,0 +1,34 @@
+Idea: Treat each location as a small problem.
+
+1. Pick some ground, it may have say, 4 games.
+2. Look at the games, from first to last (i.e. 10:00, 11:30, 1:00, 3:00) - get their categories.
+3. Randomly match an umpire to the category (if no exact match look at close categories,
+   (i.e. if no category B umps available look at C or A umps) if umpire has preference for two games 
+   also put them in the next match (e.g. if assigned to 1:00 and also have preferences 
+   for two games, also assign to 3:00). Fill up all matches, with at least two
+   umpires per match. Remove used umpires from the set of available umpires. 
+   Don't worry about if they don't exactly match category.
+   - When assigning make sure that the assignment also meets hard constraints:
+     . available times 
+	 . Not assigned to own club
+   
+For the first grounds that are filled up, preferences should be met because all umpires 
+are available. Towards the end preferences may not be as good because lots of umpires
+already assigned.
+IMPORTANT: ignore category E (boundary umpires). There are not many of them and they 
+can easily be assigned once final solution is determined. They will generally go to 
+category A games. 
+Category A games can also have 3 umpires assigned to them. This may help in 
+getting more umpires their preference of doing 2 matches. 
+   
+Should end with a pretty good initial solution. 
+
+Rough objective function: Goal to minimise it.
+. Constant penalty for not meeting preference of 2 games. 
+. Very large penalty for umpire not being assigned at all - would prefer 
+  to give umps with 2 game preference 1 game and have all umpires assigned 
+  to at least one match. 
+. Category penalty. If category matches no penalty. Smaller penalty for 
+  category A umpiring lower category than lower category umpiring higher
+  category. Also relative to distance between categories. (i.e. C umpiring A 
+  is worse than C umpiring B).
