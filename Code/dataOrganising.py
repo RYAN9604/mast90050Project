@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime as dt
+import copy
 
 
 games = pd.read_excel('Data/Round4_LP.xlsx', engine='openpyxl')
@@ -60,17 +61,17 @@ for entry in playingUmps.index:
         playtime = playingUmps.loc[entry][0]
 
         if type(playtime) != type(np.nan):
-            times = playAllow[playtime]
+            times = copy.deepcopy(playAllow[playtime])
         else:
-            times = allTimes     
+            times = copy.deepcopy(allTimes)     
         umpAvail.loc[entry][0] = times
     else: # add their available time
         playtime = playingUmps.loc[entry][0]
 
         if type(playtime) != type(np.nan):
-            times = playAllow[playtime]
+            times = copy.deepcopy(playAllow[playtime])
         else:
-            times = allTimes
+            times = copy.deepcopy(allTimes)
         newrow = pd.DataFrame(0, index=[entry], columns=[umpAvail.columns[0]],
                               dtype=object)
         newrow.loc[entry][0] = times
@@ -86,7 +87,7 @@ for entry in umpMaster.index:
     if entry not in umpAvail.index:
         newrow = pd.DataFrame(0, index=[entry], columns=[umpAvail.columns[0]],
                               dtype=object)
-        newrow.loc[entry][0] = allTimes
+        newrow.loc[entry][0] = copy.deepcopy(allTimes)
         umpAvail = pd.concat([umpAvail, newrow])
 
 umpAvail = umpAvail.sort_index()    
@@ -95,7 +96,7 @@ umpMaster = umpMaster.sort_index()
 for entry in umpAvail.index:
     avail = umpAvail.loc[entry][0]
     if type(avail) == type(np.nan):
-        umpAvail.loc[entry][0] = allTimes
+        umpAvail.loc[entry][0] = copy.deepcopy(allTimes)
 
 print("\n******\n")
 print(np.all(umpMaster.index == umpAvail.index))
@@ -118,15 +119,16 @@ for ump in umpMaster.index:
 
 # Round specific availability changes        
 umpMaster.loc["Boulter, Oscar"]["2 Games"] = False
-umpAvail.loc["Boulter, Oscar"][0] = allTimes
-umpAvail.loc["Collopy, John"][0] = allTimes[:-1]
+umpAvail.loc["Boulter, Oscar"][0] = copy.deepcopy(allTimes)
+umpAvail.loc["Collopy, John"][0] = copy.deepcopy(allTimes[:-1])
+umpAvail.loc["Parker, Cameron"][0] = copy.deepcopy(allTimes[1:])
 umpMaster.loc["Lee, Andrew"]["2 Games"] = False
 umpAvail.loc["Stacey, Joshua"][0] = [dt.time(13,0), dt.time(15,0)]
 
 # changes from 'Additional Notes'
 umpAvail.loc["Anderson, Callum"][0] = [dt.time(13,0), dt.time(15,0)]
 umpAvail.loc["Brown, Henry"][0] = [dt.time(13,0), dt.time(15,0)]
-umpAvail.loc["Dodds, Matthew"][0] = dt.time(15,0)
+umpAvail.loc["Dodds, Matthew"][0] = [dt.time(15,0)]
 umpAvail.loc["Lee, Andrew"][0] = [dt.time(10,0), dt.time(11,30)]
 umpAvail.loc["Scott, Angus"][0] = [dt.time(13,0), dt.time(15,0)]
 umpAvail.loc["Walsh, Austin"][0] = [dt.time(13,0), dt.time(15,0)]
@@ -149,3 +151,39 @@ umpMaster = umpMaster.rename(columns = {umpAvail.columns[0]: "Available"})
 cols = ["Age Group", "Category", "2 Games", "Available", "Playing", "Club",
         "Additonal Notes", "Last Name", "First Name"]
 umpMaster = umpMaster[cols]
+
+#%% 
+u = [[] for i in range(games.shape[0])]
+v = [[] for i in range(umpMaster.shape[0])]
+games['ump'] = u
+umpMaster['game'] = v
+games.set_index('Venue Name')
+
+
+#same location
+
+for j in umpMaster.index:
+    for i in games.index:
+        time = games.loc[i]['Match Time']
+        Category = games.loc[i]['Category']
+        team = games.loc[i]['Teams']
+        if time in umpMaster.loc[j]['Available']  \
+            and umpMaster.loc[j]['Club'] not in team \
+            and (umpMaster.loc[j]['game'] == [] or (i in umpMaster.loc[j]['game'] and umpMaster.loc[j]['2 Games'] and len(umpMaster.loc[j]['game'])<2))\
+            and len(games.loc[i]['ump']) < 1:
+            umpMaster.loc[j]['Available'].remove(time)
+            games.loc[i]['ump'].append(j)
+            umpMaster.loc[j]['game'].append(i)
+
+for j in umpMaster.index:
+    for i in games.index:
+        time = games.loc[i]['Match Time']
+        Category = games.loc[i]['Category']
+        team = games.loc[i]['Teams']
+        if time in umpMaster.loc[j]['Available']  \
+            and umpMaster.loc[j]['Club'] not in team \
+            and (umpMaster.loc[j]['game'] == [] or (i in umpMaster.loc[j]['game'] and umpMaster.loc[j]['2 Games'] and len(umpMaster.loc[j]['game'])<2))\
+            and len(games.loc[i]['ump']) < 2:
+            umpMaster.loc[j]['Available'].remove(time)
+            games.loc[i]['ump'].append(j)
+            umpMaster.loc[j]['game'].append(i)
