@@ -23,7 +23,7 @@ games["Teams"] = club_names
 
 umps = pd.read_excel('Data/LP_Umps2021.xlsx', engine='openpyxl')
 availability = pd.read_excel('Data/LP_Umps2021.xlsx', sheet_name="Availability",
-                             usecols="A,E", nrows=118, engine="openpyxl")
+                             usecols="A,E", engine="openpyxl")
 playingUmps = pd.read_excel('Data/Lp_playing_Rd4.xlsx', usecols="A,D",
                              engine="openpyxl")
 
