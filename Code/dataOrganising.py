@@ -162,28 +162,28 @@ games.set_index('Venue Name')
 
 #same location
 
-for j in umpMaster.index:
-    for i in games.index:
-        time = games.loc[i]['Match Time']
-        Category = games.loc[i]['Category']
-        team = games.loc[i]['Teams']
-        if time in umpMaster.loc[j]['Available']  \
-            and umpMaster.loc[j]['Club'] not in team \
-            and (umpMaster.loc[j]['game'] == [] or (i in umpMaster.loc[j]['game'] and umpMaster.loc[j]['2 Games'] and len(umpMaster.loc[j]['game'])<2))\
-            and len(games.loc[i]['ump']) < 1:
-            umpMaster.loc[j]['Available'].remove(time)
-            games.loc[i]['ump'].append(j)
-            umpMaster.loc[j]['game'].append(i)
+# for j in umpMaster.index:
+#     for i in games.index:
+#         time = games.loc[i]['Match Time']
+#         Category = games.loc[i]['Category']
+#         team = games.loc[i]['Teams']
+#         if time in umpMaster.loc[j]['Available']  \
+#             and umpMaster.loc[j]['Club'] not in team \
+#             and (umpMaster.loc[j]['game'] == [] or (i in umpMaster.loc[j]['game'] and umpMaster.loc[j]['2 Games'] and len(umpMaster.loc[j]['game'])<2))\
+#             and len(games.loc[i]['ump']) < 1:
+#             umpMaster.loc[j]['Available'].remove(time)
+#             games.loc[i]['ump'].append(j)
+#             umpMaster.loc[j]['game'].append(i)
 
-for j in umpMaster.index:
-    for i in games.index:
-        time = games.loc[i]['Match Time']
-        Category = games.loc[i]['Category']
-        team = games.loc[i]['Teams']
-        if time in umpMaster.loc[j]['Available']  \
-            and umpMaster.loc[j]['Club'] not in team \
-            and (umpMaster.loc[j]['game'] == [] or (i in umpMaster.loc[j]['game'] and umpMaster.loc[j]['2 Games'] and len(umpMaster.loc[j]['game'])<2))\
-            and len(games.loc[i]['ump']) < 2:
-            umpMaster.loc[j]['Available'].remove(time)
-            games.loc[i]['ump'].append(j)
-            umpMaster.loc[j]['game'].append(i)
+# for j in umpMaster.index:
+#     for i in games.index:
+#         time = games.loc[i]['Match Time']
+#         Category = games.loc[i]['Category']
+#         team = games.loc[i]['Teams']
+#         if time in umpMaster.loc[j]['Available']  \
+#             and umpMaster.loc[j]['Club'] not in team \
+#             and (umpMaster.loc[j]['game'] == [] or (i in umpMaster.loc[j]['game'] and umpMaster.loc[j]['2 Games'] and len(umpMaster.loc[j]['game'])<2))\
+#             and len(games.loc[i]['ump']) < 2:
+#             umpMaster.loc[j]['Available'].remove(time)
+#             games.loc[i]['ump'].append(j)
+#             umpMaster.loc[j]['game'].append(i)
