@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import copy
-
+from collections import defaultdict
 
 games = pd.read_excel('Data/Round4_LP.xlsx', engine='openpyxl')
 games = games.rename(columns={"Unnamed: 9": "Field.2"})
@@ -187,3 +187,64 @@ games.set_index('Venue Name')
 #             umpMaster.loc[j]['Available'].remove(time)
 #             games.loc[i]['ump'].append(j)
 #             umpMaster.loc[j]['game'].append(i)
+
+#%% OBJECTIVE FUNCTION
+example_sched = pd.read_excel('Data/Round4_LP_Example.xlsx', engine='openpyxl')
+example_sched = example_sched.rename(columns={"Unnamed: 9": "Field.2"})
+
+def objective(schedule, umpMaster):
+    obj = 0
+    upCatPenalty = 10
+    downCatPenalty = 5
+    not2gamesPenalty = 50
+    noGamePenalty = 10**5
+    TooManyGamesPen = 10**6
+    # Penalties for categories of matches that umpires do
+    for i in range(schedule.shape[0]):
+        matchCat = schedule.loc[i]["Category"]
+        u1 = schedule.loc[i]["Field"]
+        u2 = schedule.loc[i]["Field.1"]
+        u3 = schedule.loc[i]["Field.2"]
+        b1 = schedule.loc[i]["Boundary"]
+        b2 = schedule.loc[i]["Boundary.1"]
+        fieldumps = [u1, u2, u3]
+        for ump in fieldumps:
+            # make sure the entry is valid
+            if type(ump) == type('string') and ump != 'nan':
+                umpCat = umpMaster.loc[ump]["Category"]
+                diff = ord(umpCat) - ord(matchCat)
+                if diff < 0:
+                    # ump is higher skill than match
+                    obj += downCatPenalty * (-1) * diff
+                elif diff > 0:
+                    # ump is lower skill than match
+                    obj += upCatPenalty * diff
+                    
+    # Penalty for not doing preferrred number of games
+    ump_numgames = defaultdict(lambda: 0)
+    for ump in schedule["Field"]:
+        ump_numgames[ump] += 1
+    for ump in schedule["Field.1"]:
+        ump_numgames[ump] += 1
+    for ump in schedule["Field.2"]:
+        ump_numgames[ump] += 1
+    for ump in schedule["Boundary"]:
+        ump_numgames[ump] += 1
+    for ump in schedule["Boundary.1"]:
+        ump_numgames[ump] += 1
+    
+    print('objective =', obj)
+    print(ump_numgames)
+    for ump in umpMaster.index:
+        if ump_numgames[ump] == 0:
+            obj += noGamePenalty
+        elif umpMaster.loc[ump]["2 Games"] == True and ump_numgames[ump] == 1:
+            obj += not2gamesPenalty
+        elif umpMaster.loc[ump]["2 Games"] == False and ump_numgames[ump] == 2:
+            print(ump)
+            obj += TooManyGamesPen
+
+    print('objective =', obj)
+    return obj, schedule
+
+a,b = objective(example_sched, umpMaster)
