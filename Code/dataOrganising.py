@@ -299,7 +299,7 @@ for i in games.index:
                 umpMaster.loc[j]['working time'].append(time)
                 #print(umpMaster.loc[j]['Available'])
                 games.loc[i]['ump'].append(j)
-                umpMaster.loc[i]['working team'] += team
+                umpMaster.loc[j]['working team'] += team
                 umpMaster.loc[j]['game'].append(i)
 
 
@@ -352,18 +352,88 @@ for i in games.index:
 #    f.write('\n')
 
 
-# local step
+#objctive difference between two ump
+def objectdifferece(umpA, umpB):
+    objBefore = 0
+    objAfter = 0
+    upCatPenalty = 10
+    downCatPenalty = 5
+    not2gamesPenalty = 50
+    noGamePenalty = 10 ** 5
+    TooManyGamesPen = 10 ** 6
+    for i in umpMaster.loc[umpA]["working category"]:
+        diffBefore = ord(umpMaster.loc[umpA]["Category"]) - ord(i)
+        if diffBefore < 0:
+            objBefore += downCatPenalty * (-1) * diffBefore
+        elif diffBefore > 0:
+            objBefore += upCatPenalty * diffBefore
+        diffAfter = ord(umpMaster.loc[umpB]["Category"]) - ord(i)
+        if diffAfter < 0:
+            objAfter += downCatPenalty * (-1) * diffAfter
+        elif diffAfter > 0:
+            objAfter += upCatPenalty * diffAfter
+    for j in umpMaster.loc[umpB]["working category"]:
+        diffBefore = ord(umpMaster.loc[umpB]["Category"]) - ord(i)
+        if diffBefore < 0:
+            objBefore += downCatPenalty * (-1) * diffBefore
+        elif diffBefore > 0:
+            objBefore += upCatPenalty * diffBefore
+        diffAfter = ord(umpMaster.loc[umpA]["Category"]) - ord(i)
+        if diffAfter < 0:
+            objAfter += downCatPenalty * (-1) * diffAfter
+        elif diffAfter > 0:
+            objAfter += upCatPenalty * diffAfter
+    if len(umpMaster.loc[umpA]["games"]) != len(umpMaster.loc[umpB]["games"]) \
+        and umpMaster.loc[umpA]["2 Games"] != umpMaster.loc[umpB]["2 Games"]:
+        if umpMaster.loc[umpA]["2 Games"]:
+            ump2 = umpA
+            ump1 = umpB
+        else:
+            ump2 = umpB
+            ump1 = umpA
+        if len(umpMaster.loc[ump2]["games"]) == 2 and len(umpMaster.loc[ump1]["games"]) == 1:
+            objAfter += not2gamesPenalty + TooManyGamesPen
+        if len(umpMaster.loc[ump1]["games"]) == 2 and len(umpMaster.loc[ump2]["games"]) == 1:
+            objBefore += not2gamesPenalty + TooManyGamesPen
+        if len(umpMaster.loc[ump2]["games"]) == 2 and len(umpMaster.loc[ump1]["games"]) == 0:
+            objBefore += noGamePenalty
+            objAfter +=noGamePenalty + TooManyGamesPen
+        if len(umpMaster.loc[ump1]["games"]) == 2 and len(umpMaster.loc[ump2]["games"]) == 0:
+            objBefore += TooManyGamesPen + noGamePenalty
+            objAfter += noGamePenalty
+        if len(umpMaster.loc[ump2]["games"]) == 1 and len(umpMaster.loc[ump1]["games"]) == 0:
+            objBefore += not2gamesPenalty + noGamePenalty
+            objAfter += noGamePenalty
+        if len(umpMaster.loc[ump1]["games"]) == 1 and len(umpMaster.loc[ump2]["games"]) == 0:
+            objBefore += noGamePenalty
+            objAfter += not2gamesPenalty + noGamePenalty
+    res = objAfter - objBefore
+    return res
+
+# local step 1:
 umpSet = list(umpMaster.index)
 a = random.choice(umpSet)
 b = a
 while b == a:
     b = random.choice(umpSet)
-if umpMaster.loc[a]['2 Games'] == umpMaster.loc[b]['2 Games']  \
-        and umpMaster.loc[b]['working time'] in umpMaster.loc[a]['Available']\
+if umpMaster.loc[b]['working time'] in umpMaster.loc[a]['Available'] \
         and umpMaster.loc[a]['working time'] in umpMaster.loc[b]['Available']\
         and umpMaster.loc[b]['Club'] not in umpMaster.loc[a]['working team']\
         and umpMaster.loc[a]['Club'] not in umpMaster.loc[b]['working team']\
-        and :
+        and objectdifferece(a, b) <=0 :
+    tempWorkingTime = umpMaster.loc[a]['working time']
+    umpMaster.loc[a]['working time'] = umpMaster.loc[b]['working time']
+    umpMaster.loc[b]['working time'] = tempWorkingTime
+    tempWorkingTeam = umpMaster.loc[a]['working team']
+    umpMaster.loc[a]['working team'] = umpMaster.loc[b]['working team']
+    umpMaster.loc[b]['working team'] = tempWorkingTeam
+    tempWorkingCategory = umpMaster.loc[a]['working category']
+    umpMaster.loc[a]['working category'] = umpMaster.loc[b]['working category']
+    umpMaster.loc[b]['working category'] = tempWorkingCategory
+    tempWorkingGame = umpMaster.loc[a]['game']
+    umpMaster.loc[a]['game'] = umpMaster.loc[b]['game']
+    umpMaster.loc[b]['game'] = tempWorkingGame
+
 
 
 
