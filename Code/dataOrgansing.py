@@ -5,6 +5,7 @@ import pandas as pd
 import datetime as dt
 import copy
 from collections import defaultdict
+import openpyxl
 
 games = pd.read_excel('Data/Round4_LP.xlsx', engine='openpyxl')
 games = games.rename(columns={"Unnamed: 9": "Field.2"})
@@ -159,10 +160,12 @@ u = [[] for i in range(games.shape[0])]
 v = [[] for i in range(umpMaster.shape[0])]
 w = [[] for i in range(umpMaster.shape[0])]
 p = [[] for i in range(umpMaster.shape[0])]
+k = [[] for i in range(umpMaster.shape[0])]
 games['ump'] = u
 umpMaster['game'] = v
 umpMaster['working time'] = w
 umpMaster['working team'] = p
+umpMaster['working category'] = k
 games.set_index('Venue Name')
 
 # minimize category difference
@@ -292,7 +295,7 @@ for i in games.index:
             games.loc[i]['ump'].append(j)
             umpMaster.loc[j]['working team'] += team
             umpMaster.loc[j]['game'].append(i)
-            typeMap[i][time].append(1)
+            typeMap[games.loc[i]['Venue Name']][time].append(1)
 
 # for j in umpMaster.index:
 #    for i in games.index:
@@ -393,6 +396,60 @@ def objectdifferece(umpA, umpB):
             objAfter += not2gamesPenalty + noGamePenalty
     res = objAfter - objBefore
     return res
+def objectdiffereceThree(umpA, umpB, umpC):
+    objBefore = 0
+    objAfter = 0
+    upCatPenalty = 10
+    downCatPenalty = 5
+    not2gamesPenalty = 50
+    noGamePenalty = 10 ** 5
+    TooManyGamesPen = 10 ** 6
+    for i in umpMaster.loc[umpA]["working category"]:
+        diffBefore = ord(umpMaster.loc[umpA]["Category"]) - ord(i)
+        if diffBefore < 0:
+            objBefore += downCatPenalty * (-1) * diffBefore
+        elif diffBefore > 0:
+            objBefore += upCatPenalty * diffBefore
+        diffAfter = ord(umpMaster.loc[umpC]["Category"]) - ord(i)
+        if diffAfter < 0:
+            objAfter += downCatPenalty * (-1) * diffAfter
+        elif diffAfter > 0:
+            objAfter += upCatPenalty * diffAfter
+    for i in umpMaster.loc[umpB]["working category"]:
+        diffBefore = ord(umpMaster.loc[umpB]["Category"]) - ord(i)
+        if diffBefore < 0:
+            objBefore += downCatPenalty * (-1) * diffBefore
+        elif diffBefore > 0:
+            objBefore += upCatPenalty * diffBefore
+        diffAfter = ord(umpMaster.loc[umpC]["Category"]) - ord(i)
+        if diffAfter < 0:
+            objAfter += downCatPenalty * (-1) * diffAfter
+        elif diffAfter > 0:
+            objAfter += upCatPenalty * diffAfter
+    j = umpMaster.loc[umpC]["working category"][1]
+    diffBefore = ord(umpMaster.loc[umpC]["Category"]) - ord(j)
+    if diffBefore < 0:
+        objBefore += downCatPenalty * (-1) * diffBefore
+    elif diffBefore > 0:
+        objBefore += upCatPenalty * diffBefore
+    diffAfter = ord(umpMaster.loc[umpA]["Category"]) - ord(j)
+    if diffAfter < 0:
+        objAfter += downCatPenalty * (-1) * diffAfter
+    elif diffAfter > 0:
+        objAfter += upCatPenalty * diffAfter
+    j = umpMaster.loc[umpC]["working category"][2]
+    diffBefore = ord(umpMaster.loc[umpC]["Category"]) - ord(j)
+    if diffBefore < 0:
+        objBefore += downCatPenalty * (-1) * diffBefore
+    elif diffBefore > 0:
+        objBefore += upCatPenalty * diffBefore
+    diffAfter = ord(umpMaster.loc[umpB]["Category"]) - ord(j)
+    if diffAfter < 0:
+        objAfter += downCatPenalty * (-1) * diffAfter
+    elif diffAfter > 0:
+        objAfter += upCatPenalty * diffAfter
+    res = objAfter - objBefore
+    return res
 
 # local step 1:
 umpSet = list(umpMaster.index)
@@ -419,15 +476,59 @@ if umpMaster.loc[b]['working time'] in umpMaster.loc[a]['Available'] \
     umpMaster.loc[b]['game'] = tempWorkingGame
 
 #facility search
+
+c = random.choice(umpSet)
+while not umpMaster.loc[c]['2 Games']:
+    c = random.choice(umpSet)
 venue = random.choice(venueSet)
 timeSS = timeAvailable[venue]
 lenghth = len(timeSS)
+while lenghth ==0:
+    venue = random.choice(venueSet)
+    timeSS = timeAvailable[venue]
+    lenghth = len(timeSS)
 num = random.randint(0, lenghth-1)
 if num > lenghth/2.0:
     a = num
     b = num - 1
     while b > 0:
-        if 1 in typeMap[venue][timeSS[a]] and 1 in typeMap[venue][timeSS[b]]:
+        if 1 in typeMap[venue][timeSS[a]] and 1 in typeMap[venue][timeSS[b]]\
+            and umpMaster.loc[a]['working time'] in umpMaster.loc[c]['Available']\
+            and umpMaster.loc[b]['working time'] in umpMaster.loc[c]['Available']\
+            and umpMaster.loc[c]['working time'][1] in umpMaster.loc[a]['Available']\
+            and umpMaster.loc[c]['working time'][2] in umpMaster.loc[b]['Available']\
+            and umpMaster.loc[c]['Club'] not in umpMaster.loc[a]['working team']\
+            and umpMaster.loc[c]['Club'] not in umpMaster.loc[b]['working team']\
+            and umpMaster.loc[b]['Club'] not in umpMaster.loc[c]['working team']\
+            and umpMaster.loc[a]['Club'] not in umpMaster.loc[c]['working team']\
+            and objectdiffereceThree(a,b,c) <= 0:
+            tempWorkingTime = umpMaster.loc[c]['working time']
+            umpMaster.loc[c]['working time'] = []
+            umpMaster.loc[c]['working time'].append(umpMaster.loc[a]['working time'])
+            umpMaster.loc[c]['working time'].append(umpMaster.loc[b]['working time'])
+            umpMaster.loc[a]['working time'] = tempWorkingTime[0]
+            umpMaster.loc[b]['working time'] = tempWorkingTime[1]
+            tempWorkingTeam = umpMaster.loc[c]['working team']
+            umpMaster.loc[c]['working team'] = []
+            umpMaster.loc[c]['working team'].append(umpMaster.loc[a]['working team'])
+            umpMaster.loc[c]['working team'].append(umpMaster.loc[b]['working team'])
+            umpMaster.loc[a]['working team'] = tempWorkingTeam[0]
+            umpMaster.loc[b]['working team'] = tempWorkingTeam[1]
+            tempWorkingCategory = umpMaster.loc[c]['working category']
+            umpMaster.loc[c]['working category'] = []
+            umpMaster.loc[c]['working category'].append(umpMaster.loc[a]['working category'])
+            umpMaster.loc[c]['working category'].append(umpMaster.loc[b]['working category'])
+            umpMaster.loc[a]['working category'] = tempWorkingCategory[0]
+            umpMaster.loc[b]['working category'] = tempWorkingCategory[1]
+            tempWorkingGame = umpMaster.loc[c]['game']
+            umpMaster.loc[c]['game'] = []
+            umpMaster.loc[c]['game'].append(umpMaster.loc[a]['game'])
+            umpMaster.loc[c]['game'].append(umpMaster.loc[b]['game'])
+            umpMaster.loc[a]['game'] = tempWorkingGame[0]
+            umpMaster.loc[b]['game'] = tempWorkingGame[1]
+
+
+
             #switch ump a and  ump b with one 2 games ump
 
 
