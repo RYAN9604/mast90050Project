@@ -457,8 +457,8 @@ a = random.choice(umpSet)
 b = a
 while b == a:
     b = random.choice(umpSet)
-if umpMaster.loc[b]['working time'] in umpMaster.loc[a]['Available'] \
-        and umpMaster.loc[a]['working time'] in umpMaster.loc[b]['Available']\
+if all(item in umpMaster.loc[a]['Available'] for item in umpMaster.loc[b]['working time'])\
+        and all(item in umpMaster.loc[b]['Available'] for item in umpMaster.loc[a]['working time'])\
         and umpMaster.loc[b]['Club'] not in umpMaster.loc[a]['working team']\
         and umpMaster.loc[a]['Club'] not in umpMaster.loc[b]['working team']\
         and objectdifferece(a, b) <=0 :
@@ -476,7 +476,6 @@ if umpMaster.loc[b]['working time'] in umpMaster.loc[a]['Available'] \
     umpMaster.loc[b]['game'] = tempWorkingGame
 
 #facility search
-
 c = random.choice(umpSet)
 while not umpMaster.loc[c]['2 Games']:
     c = random.choice(umpSet)
@@ -489,8 +488,8 @@ while lenghth ==0:
     lenghth = len(timeSS)
 num = random.randint(0, lenghth-1)
 if num > lenghth/2.0:
-    a = num
-    b = num - 1
+    a = umpSet[num]
+    b = umpSet[num - 1]
     while b > 0:
         if 1 in typeMap[venue][timeSS[a]] and 1 in typeMap[venue][timeSS[b]]\
             and umpMaster.loc[a]['working time'] in umpMaster.loc[c]['Available']\
