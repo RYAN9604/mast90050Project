@@ -426,16 +426,17 @@ for i in games.index:
                 games.loc[i]['Field.1'].append(j)
             umpMaster.loc[j]['working team'] += team
             umpMaster.loc[j]['game'].append(games.loc[i]['Venue Name'])
+            umpMaster.loc[j]['working category'] += games.loc[i]['Category']
             typeMap[games.loc[i]['Venue Name']][time].append(1)
 
 a, b = objective(games, umpMaster)
 
 
-print(a)
+print(umpMaster['working category'])
 # local step 1:
 umpSet = list(umpMaster.index)
 local = 0
-while local <= 5:
+while local <= 0:
     a = random.choice(umpSet, )
     while len(umpMaster.loc[a]['game']) == []:
         a = random.choice(umpSet, )
@@ -573,4 +574,5 @@ while local <= 5:
 
 a, b = objective(games, umpMaster)
 print(a)
+
 
