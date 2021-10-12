@@ -431,11 +431,11 @@ for i in games.index:
 a, b = objective(games, umpMaster)
 
 
-
+print(a)
 # local step 1:
 umpSet = list(umpMaster.index)
 local = 0
-while local <=100:
+while local <= 5:
     a = random.choice(umpSet, )
     while len(umpMaster.loc[a]['game']) == []:
         a = random.choice(umpSet, )
@@ -490,13 +490,13 @@ while local <=100:
 
 
             if 1 in typeMap[venue][timeSS[a]] and 1 in typeMap[venue][timeSS[b]]:
-                umpA = games.loc[indexMap[venue][timeSS[a]]]['Field']
-                print(umpMaster.loc[umpA]['2 Games'])
+                umpA = games.loc[indexMap[venue][timeSS[a]]]['Field'][0]
+
                 if umpMaster.loc[umpA]['2 Games'] == True:
-                    umpA = games.loc[indexMap[venue][timeSS[a]]]['Field.1']
-                umpB = games.loc[indexMap[venue][timeSS[b]]]['Field']
+                    umpA = games.loc[indexMap[venue][timeSS[a]]]['Field.1'][0]
+                umpB = games.loc[indexMap[venue][timeSS[b]]]['Field'][0]
                 if umpMaster.loc[umpB]['2 Games'] == True:
-                    umpB = games.loc[indexMap[venue][timeSS[b]]]['Field.1']
+                    umpB = games.loc[indexMap[venue][timeSS[b]]]['Field.1'][0]
                 if (all(item in umpMaster.loc[umpB]['Available'] for item in umpMaster.loc[umpA]['working time']))\
                 and (all(item in umpMaster.loc[c]['Available'] for item in umpMaster.loc[umpB]['working time']))\
                 and umpMaster.loc[c]['working time'][1] in umpMaster.loc[umpA]['Available']\
@@ -572,4 +572,5 @@ while local <=100:
 
 
 a, b = objective(games, umpMaster)
+print(a)
 
