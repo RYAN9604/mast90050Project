@@ -418,6 +418,8 @@ for i in games.index:
                 and umpMaster.loc[j]['Club'] not in team and len(games.loc[i]['ump']) < 2 \
                 and ((len(umpMaster.loc[j]['game']) < 2 and umpMaster.loc[j]['2 Games']) or (
                 len(umpMaster.loc[j]['game']) < 1 and not umpMaster.loc[j]['2 Games'])):
+            if len(umpMaster.loc[j]['game']) == 1 and i not in umpMaster.loc[j]['game']:
+                continue
             umpMaster.loc[j]['Available'].remove(time)
             umpMaster.loc[j]['working time'].append(time)
             games.loc[i]['ump'].append(j)
@@ -435,6 +437,7 @@ for i in games.index:
 
 a, b = objective(games, umpMaster)
 print(a)
+
 
 
 # local step 1:
