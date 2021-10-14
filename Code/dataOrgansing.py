@@ -21,8 +21,8 @@ def objective(schedule, umpMaster):
     # Penalties for categories of matches that umpires do
     for i in range(schedule.shape[0]):
         matchCat = schedule.loc[i]["Category"]
-        u1 = schedule.loc[i]["Field"]
-        u2 = schedule.loc[i]["Field.1"]
+        u1 = schedule.loc[i]["Field"][0]
+        u2 = schedule.loc[i]["Field.1"][0]
         u3 = schedule.loc[i]["Field.2"]
         b1 = schedule.loc[i]["Boundary"]
         b2 = schedule.loc[i]["Boundary.1"]
@@ -56,6 +56,7 @@ def objective(schedule, umpMaster):
     for ump in schedule["Boundary.1"]:
 
         ump_numgames[ump] += 1
+
 
 
     for ump in umpMaster.index:
@@ -113,7 +114,7 @@ def objectdifferece(umpA, umpB):
             objBefore += not2gamesPenalty + TooManyGamesPen
         if len(umpMaster.loc[ump2]["game"]) == 2 and len(umpMaster.loc[ump1]["game"]) == 0:
             objBefore += noGamePenalty
-            objAfter +=noGamePenalty + TooManyGamesPen
+            objAfter += noGamePenalty + TooManyGamesPen
         if len(umpMaster.loc[ump1]["game"]) == 2 and len(umpMaster.loc[ump2]["game"]) == 0:
             objBefore += TooManyGamesPen + noGamePenalty
             objAfter += noGamePenalty
@@ -158,7 +159,7 @@ def objectdiffereceThree(umpA, umpB, umpC):
             objAfter += downCatPenalty * (-1) * diffAfter
         elif diffAfter > 0:
             objAfter += upCatPenalty * diffAfter
-    j = umpMaster.loc[umpC]["working category"][1]
+    j = umpMaster.loc[umpC]["working category"][0]
     diffBefore = ord(umpMaster.loc[umpC]["Category"]) - ord(j)
     if diffBefore < 0:
         objBefore += downCatPenalty * (-1) * diffBefore
@@ -169,7 +170,7 @@ def objectdiffereceThree(umpA, umpB, umpC):
         objAfter += downCatPenalty * (-1) * diffAfter
     elif diffAfter > 0:
         objAfter += upCatPenalty * diffAfter
-    j = umpMaster.loc[umpC]["working category"][2]
+    j = umpMaster.loc[umpC]["working category"][1]
     diffBefore = ord(umpMaster.loc[umpC]["Category"]) - ord(j)
     if diffBefore < 0:
         objBefore += downCatPenalty * (-1) * diffBefore
@@ -374,7 +375,7 @@ for x in venueSet:
                     filterTeamTime.append(y)
             if len(filterTeamTime) >= 2:
                 for z in filterTeamTime:
-                    if cateGoryMap[x][z] == umpMaster.loc[j]['Category']:
+   #                 if cateGoryMap[x][z] == umpMaster.loc[j]['Category']:
                         games.loc[indexMap[x][z]]['ump'].append(j)
                         if games.loc[indexMap[x][z]]['Field'] == []:
                             games.loc[indexMap[x][z]]['Field'].append(j)
@@ -413,7 +414,7 @@ for i in games.index:
     Category = games.loc[i]['Category']
     team = games.loc[i]['Teams']
     for j in umpMaster.index:
-        if time in umpMaster.loc[j]['Available'] and abs(ord(umpMaster.loc[j]['Category']) - ord(Category)) <= 1 \
+        if time in umpMaster.loc[j]['Available'] and abs(ord(umpMaster.loc[j]['Category']) - ord(Category)) <= 2 \
                 and umpMaster.loc[j]['Club'] not in team and len(games.loc[i]['ump']) < 2 \
                 and ((len(umpMaster.loc[j]['game']) < 2 and umpMaster.loc[j]['2 Games']) or (
                 len(umpMaster.loc[j]['game']) < 1 and not umpMaster.loc[j]['2 Games'])):
@@ -427,37 +428,54 @@ for i in games.index:
             umpMaster.loc[j]['working team'] += team
             umpMaster.loc[j]['game'].append(games.loc[i]['Venue Name'])
             umpMaster.loc[j]['working category'] += games.loc[i]['Category']
-            typeMap[games.loc[i]['Venue Name']][time].append(1)
+            if umpMaster.loc[j]['2 Games']:
+                typeMap[games.loc[i]['Venue Name']][time].append(2)
+            else:
+                typeMap[games.loc[i]['Venue Name']][time].append(1)
 
 a, b = objective(games, umpMaster)
+print(a)
 
 
-print(umpMaster['working category'])
 # local step 1:
 umpSet = list(umpMaster.index)
 local = 0
-while local <= 0:
+while local <= 10000:
     a = random.choice(umpSet, )
     while len(umpMaster.loc[a]['game']) == []:
         a = random.choice(umpSet, )
     b = copy.deepcopy(a)
     while b == a or len(umpMaster.loc[b]['game']) != len(umpMaster.loc[a]['game']):
         b = random.choice(umpSet)
+
+
     if (all(item in umpMaster.loc[a]['Available'] for item in umpMaster.loc[b]['working time'])) \
             and (all(item in umpMaster.loc[b]['Available'] for item in umpMaster.loc[a]['working time']))\
             and umpMaster.loc[b]['Club'] not in umpMaster.loc[a]['working team']\
             and umpMaster.loc[a]['Club'] not in umpMaster.loc[b]['working team']\
-            and objectdifferece(a, b) <= 0:
+            and objectdifferece(a, b) < 0:
         for i in range(len(umpMaster.loc[a]['game'])):
-            if games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]]['Field'] == a:
-                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]]['Field'] = copy.deepcopy(b)
+            if games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]]['Field'] == [a]:
+                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]][
+                    'Field'].clear()
+                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]][
+                    'Field'].append(b)
             else:
-                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]]['Field.1'] = copy.deepcopy(b)
+                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]][
+                    'Field.1'].clear()
+                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]][
+                    'Field.1'].append(b)
         for i in range(len(umpMaster.loc[a]['game'])):
-            if games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]]['Field'] == b:
-                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]]['Field'] = copy.deepcopy(a)
+            if games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]]['Field'] == [b]:
+                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]][
+                    'Field'].clear()
+                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]][
+                    'Field'].append(a)
             else:
-                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]]['Field.1'] = copy.deepcopy(a)
+                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]][
+                    'Field.1'].clear()
+                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]][
+                    'Field.1'].append(a)
         tempWorkingTime = copy.deepcopy(umpMaster.loc[a]['working time'])
         umpMaster.loc[a]['working time'] = copy.deepcopy(umpMaster.loc[b]['working time'])
         umpMaster.loc[b]['working time'] = copy.deepcopy(tempWorkingTime)
@@ -470,98 +488,140 @@ while local <= 0:
         tempWorkingGame = copy.deepcopy(umpMaster.loc[a]['game'])
         umpMaster.loc[a]['game'] = copy.deepcopy(umpMaster.loc[b]['game'])
         umpMaster.loc[b]['game'] = copy.deepcopy(tempWorkingGame)
+        if len(umpMaster.loc[b]['game']) != len(umpMaster.loc[b]['working time']):
+            print('change')
 
 #facility search
 
     c = random.choice(umpSet)
-    while not umpMaster.loc[c]['2 Games'] and not len(umpMaster.loc[b]['game']) == 2:
+    while not umpMaster.loc[c]['2 Games'] or not len(umpMaster.loc[c]['game']) == 2:
         c = random.choice(umpSet)
     venue = random.choice(venueSet)
     timeSS = timeAvailable[venue]
     lenghth = len(timeSS)
-    while lenghth == 0:
+    while lenghth == 0 or lenghth == 1:
         venue = random.choice(venueSet)
         timeSS = timeAvailable[venue]
         lenghth = len(timeSS)
     num = random.randint(0, lenghth-1)
-    if num > lenghth/2.0:
+    if num >= lenghth/2.0:
         a = num
         b = num - 1
-        while b > 0:
+    else:
+        a = num
+        b = num + 1
+    #print(lenghth)
+    #print(num)
+    #print(b)
 
 
-            if 1 in typeMap[venue][timeSS[a]] and 1 in typeMap[venue][timeSS[b]]:
-                umpA = games.loc[indexMap[venue][timeSS[a]]]['Field'][0]
 
-                if umpMaster.loc[umpA]['2 Games'] == True:
-                    umpA = games.loc[indexMap[venue][timeSS[a]]]['Field.1'][0]
-                umpB = games.loc[indexMap[venue][timeSS[b]]]['Field'][0]
-                if umpMaster.loc[umpB]['2 Games'] == True:
-                    umpB = games.loc[indexMap[venue][timeSS[b]]]['Field.1'][0]
-                if (all(item in umpMaster.loc[umpB]['Available'] for item in umpMaster.loc[umpA]['working time']))\
-                and (all(item in umpMaster.loc[c]['Available'] for item in umpMaster.loc[umpB]['working time']))\
-                and umpMaster.loc[c]['working time'][1] in umpMaster.loc[umpA]['Available']\
-                and umpMaster.loc[c]['working time'][2] in umpMaster.loc[umpB]['Available']\
-                and umpMaster.loc[c]['Club'] not in umpMaster.loc[umpA]['working team']\
-                and umpMaster.loc[c]['Club'] not in umpMaster.loc[umpB]['working team']\
-                and umpMaster.loc[umpB]['Club'] not in umpMaster.loc[c]['working team']\
-                and umpMaster.loc[umpA]['Club'] not in umpMaster.loc[c]['working team']\
-                and objectdiffereceThree(a,b,c) <= 0:
-                    a = umpA
-                    b = umpB
-                    if games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]]['Field'] == a:
-                        games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
-                            'Field'] = copy.deepcopy(b)
-                    else:
-                        games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
-                            'Field.1'] = copy.deepcopy(b)
+    if 1 in typeMap[venue][timeSS[a]] and 1 in typeMap[venue][timeSS[b]]:
+        umpA = games.loc[indexMap[venue][timeSS[a]]]['Field'][0]
+        if umpMaster.loc[umpA]['2 Games'] == True:
+            umpA = games.loc[indexMap[venue][timeSS[a]]]['Field.1'][0]
+        umpB = games.loc[indexMap[venue][timeSS[b]]]['Field'][0]
+        if umpMaster.loc[umpB]['2 Games'] == True:
+            umpB = games.loc[indexMap[venue][timeSS[b]]]['Field.1'][0]
+        if (all(item in umpMaster.loc[umpB]['Available'] for item in umpMaster.loc[umpA]['working time']))\
+        and (all(item in umpMaster.loc[c]['Available'] for item in umpMaster.loc[umpB]['working time']))\
+        and umpMaster.loc[c]['working time'][0] in umpMaster.loc[umpA]['Available']\
+        and umpMaster.loc[c]['working time'][1] in umpMaster.loc[umpB]['Available']\
+        and umpMaster.loc[c]['Club'] not in umpMaster.loc[umpA]['working team']\
+        and umpMaster.loc[c]['Club'] not in umpMaster.loc[umpB]['working team']\
+        and umpMaster.loc[umpB]['Club'] not in umpMaster.loc[c]['working team']\
+        and umpMaster.loc[umpA]['Club'] not in umpMaster.loc[c]['working team']\
+        and objectdiffereceThree(umpA,umpB,c) < 0:
+            a = umpA
+            b = umpB
+            if games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]]['Field'] == [a]:
 
-                    if games.loc[indexMap[umpMaster.loc[a]['game'][1]][umpMaster.loc[a]['working time'][1]]]['Field'] == a:
-                        games.loc[indexMap[umpMaster.loc[a]['game'][1]][umpMaster.loc[a]['working time'][1]]][
-                            'Field'] = copy.deepcopy(c)
-                    else:
-                        games.loc[indexMap[umpMaster.loc[a]['game'][1]][umpMaster.loc[a]['working time'][1]]][
-                            'Field.1'] = copy.deepcopy(c)
+                games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
+                    'Field'].clear()
+                games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
+                    'Field'].append(c)
 
-                    if games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]]['Field'] == b:
-                        games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
-                            'Field'] = copy.deepcopy(a)
-                    else:
-                        games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
-                            'Field.1'] = copy.deepcopy(a)
-                    if games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]]['Field'] == c:
-                        games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
-                            'Field'] = copy.deepcopy(a)
-                    else:
-                        games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
-                            'Field.1'] = copy.deepcopy(a)
+            else:
+                games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
+                    'Field.1'].clear()
+                games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
+                    'Field.1'].append(c)
 
-                    tempWorkingTime = umpMaster.loc[c]['working time']
-                    umpMaster.loc[c]['working time'] = []
-                    umpMaster.loc[c]['working time'].append(umpMaster.loc[a]['working time'])
-                    umpMaster.loc[c]['working time'].append(umpMaster.loc[b]['working time'])
-                    umpMaster.loc[a]['working time'] = tempWorkingTime[0]
-                    umpMaster.loc[b]['working time'] = tempWorkingTime[1]
-                    tempWorkingTeam = umpMaster.loc[c]['working team']
-                    umpMaster.loc[c]['working team'] = []
-                    umpMaster.loc[c]['working team'].append(umpMaster.loc[a]['working team'])
-                    umpMaster.loc[c]['working team'].append(umpMaster.loc[b]['working team'])
-                    umpMaster.loc[a]['working team'] = tempWorkingTeam[0]
-                    umpMaster.loc[b]['working team'] = tempWorkingTeam[1]
-                    tempWorkingCategory = umpMaster.loc[c]['working category']
-                    umpMaster.loc[c]['working category'] = []
-                    umpMaster.loc[c]['working category'].append(umpMaster.loc[a]['working category'])
-                    umpMaster.loc[c]['working category'].append(umpMaster.loc[b]['working category'])
-                    umpMaster.loc[a]['working category'] = tempWorkingCategory[0]
-                    umpMaster.loc[b]['working category'] = tempWorkingCategory[1]
-                    tempWorkingGame = umpMaster.loc[c]['game']
-                    umpMaster.loc[c]['game'] = []
-                    umpMaster.loc[c]['game'].append(umpMaster.loc[a]['game'])
-                    umpMaster.loc[c]['game'].append(umpMaster.loc[b]['game'])
-                    umpMaster.loc[a]['game'] = tempWorkingGame[0]
-                    umpMaster.loc[b]['game'] = tempWorkingGame[1]
+
+            if games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]]['Field'] == [b]:
+                games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
+                    'Field'].clear()
+                games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
+                    'Field'].append(c)
+            else:
+                games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
+                    'Field.1'].clear()
+                games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
+                    'Field.1'].append(c)
+            if games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]]['Field'] == [c]:
+                games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
+                    'Field'].clear()
+                games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
+                    'Field'].append(a)
+            else:
+                games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
+                    'Field.1'].clear()
+                games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
+                    'Field.1'].append(a)
+            if games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]]['Field'] == [c]:
+                games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
+                    'Field'].clear()
+                games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
+                    'Field'].append(b)
+            else:
+                games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
+                    'Field.1'].clear()
+                games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
+                    'Field.1'].append(b)
+
+
+
+            #if len(umpMaster.loc[c]['working time']) != len(umpMaster.loc[c]['game']):
+            #    print(umpMaster.loc[c]['working time'])
+            #if len(umpMaster.loc[b]['working time']) != 1:
+            #    print(umpMaster.loc[b]['working time'])
+            #if len(umpMaster.loc[a]['working time']) != 1:
+            #    print(umpMaster.loc[a]['working time'])
+
+
+            tempWorkingTime = umpMaster.loc[c]['working time']
+
+            umpMaster.loc[c]['working time'] = []
+            umpMaster.loc[c]['working time'].append(umpMaster.loc[a]['working time'][0])
+            umpMaster.loc[c]['working time'].append(umpMaster.loc[b]['working time'][0])
+            umpMaster.loc[a]['working time'] = [tempWorkingTime[0]]
+            umpMaster.loc[b]['working time'] = [tempWorkingTime[1]]
+
+
+
+
+            tempWorkingTeam = umpMaster.loc[c]['working team']
+            umpMaster.loc[c]['working team'] = []
+            umpMaster.loc[c]['working team'].append(umpMaster.loc[a]['working team'][0])
+            umpMaster.loc[c]['working team'].append(umpMaster.loc[b]['working team'][0])
+            umpMaster.loc[a]['working team'] = [tempWorkingTeam[0]]
+            umpMaster.loc[b]['working team'] = [tempWorkingTeam[1]]
+            tempWorkingCategory = umpMaster.loc[c]['working category']
+            umpMaster.loc[c]['working category'] = []
+            umpMaster.loc[c]['working category'].append(umpMaster.loc[a]['working category'][0])
+            umpMaster.loc[c]['working category'].append(umpMaster.loc[b]['working category'][0])
+            umpMaster.loc[a]['working category'] = [tempWorkingCategory[0]]
+            umpMaster.loc[b]['working category'] = [tempWorkingCategory[1]]
+            tempWorkingGame = umpMaster.loc[c]['game']
+            umpMaster.loc[c]['game'] = []
+            umpMaster.loc[c]['game'].append(umpMaster.loc[a]['game'][0])
+            umpMaster.loc[c]['game'].append(umpMaster.loc[b]['game'][0])
+            umpMaster.loc[a]['game'] = [tempWorkingGame[0]]
+            umpMaster.loc[b]['game'] = [tempWorkingGame[1]]
+            z
 
     local +=1
+
 
             #switch ump a and  ump b with one 2 games ump
 
@@ -572,7 +632,6 @@ while local <= 0:
 
 
 
-a, b = objective(games, umpMaster)
-print(a)
-
+c, d = objective(games, umpMaster)
+print(c)
 
