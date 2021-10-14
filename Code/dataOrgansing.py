@@ -2,196 +2,21 @@ import random
 
 import numpy as np
 import pandas as pd
+import random
 import datetime as dt
 import copy
 from collections import defaultdict
 import openpyxl
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows', None)
-random.seed(10086)
-
-def objective(schedule, umpMaster):
-    obj = 0
-    upCatPenalty = 10
-    downCatPenalty = 5
-    not2gamesPenalty = 50
-    noGamePenalty = 10 ** 5
-    TooManyGamesPen = 10 ** 6
-    # Penalties for categories of matches that umpires do
-    for i in range(schedule.shape[0]):
-        matchCat = schedule.loc[i]["Category"]
-        u1 = schedule.loc[i]["Field"][0]
-        u2 = schedule.loc[i]["Field.1"][0]
-        u3 = schedule.loc[i]["Field.2"]
-        b1 = schedule.loc[i]["Boundary"]
-        b2 = schedule.loc[i]["Boundary.1"]
-        fieldumps = [u1, u2, u3]
-        for ump in fieldumps:
-            # make sure the entry is valid
-            if type(ump) == type('string') and ump != 'nan':
-                umpCat = umpMaster.loc[ump]["Category"]
-                diff = ord(umpCat) - ord(matchCat)
-                if diff < 0:
-                    # ump is higher skill than match
-                    obj += downCatPenalty * (-1) * diff
-                elif diff > 0:
-                    # ump is lower skill than match
-                    obj += upCatPenalty * diff
-
-    # Penalty for not doing preferrred number of games
-    ump_numgames = defaultdict(lambda: 0)
-    for ump in schedule["Field"]:
-        ump = ump[0]
-        ump_numgames[ump] += 1
-    for ump in schedule["Field.1"]:
-        ump = ump[0]
-        ump_numgames[ump] += 1
-    #for ump in schedule["Field.2"]:
-    #
-    #    ump_numgames[ump] += 1
-    for ump in schedule["Boundary"]:
-
-        ump_numgames[ump] += 1
-    for ump in schedule["Boundary.1"]:
-
-        ump_numgames[ump] += 1
-
-
-
-    for ump in umpMaster.index:
-        if ump_numgames[ump] == 0:
-            obj += noGamePenalty
-        elif umpMaster.loc[ump]["2 Games"] == True and ump_numgames[ump] == 1:
-            obj += not2gamesPenalty
-        elif umpMaster.loc[ump]["2 Games"] == False and ump_numgames[ump] == 2:
-            obj += TooManyGamesPen
-
-    return obj, schedule
-
-#objctive difference when switching two ump
-def objectdifferece(umpA, umpB):
-    objBefore = 0
-    objAfter = 0
-    upCatPenalty = 10
-    downCatPenalty = 5
-    not2gamesPenalty = 50
-    noGamePenalty = 10 ** 5
-    TooManyGamesPen = 10 ** 6
-    for i in umpMaster.loc[umpA]["working category"]:
-        diffBefore = ord(umpMaster.loc[umpA]["Category"]) - ord(i)
-        if diffBefore < 0:
-            objBefore += downCatPenalty * (-1) * diffBefore
-        elif diffBefore > 0:
-            objBefore += upCatPenalty * diffBefore
-        diffAfter = ord(umpMaster.loc[umpB]["Category"]) - ord(i)
-        if diffAfter < 0:
-            objAfter += downCatPenalty * (-1) * diffAfter
-        elif diffAfter > 0:
-            objAfter += upCatPenalty * diffAfter
-    for j in umpMaster.loc[umpB]["working category"]:
-        diffBefore = ord(umpMaster.loc[umpB]["Category"]) - ord(j)
-        if diffBefore < 0:
-            objBefore += downCatPenalty * (-1) * diffBefore
-        elif diffBefore > 0:
-            objBefore += upCatPenalty * diffBefore
-        diffAfter = ord(umpMaster.loc[umpA]["Category"]) - ord(j)
-        if diffAfter < 0:
-            objAfter += downCatPenalty * (-1) * diffAfter
-        elif diffAfter > 0:
-            objAfter += upCatPenalty * diffAfter
-    if len(umpMaster.loc[umpA]["game"]) != len(umpMaster.loc[umpB]["game"]) \
-        and umpMaster.loc[umpA]["2 Games"] != umpMaster.loc[umpB]["2 Games"]:
-        if umpMaster.loc[umpA]["2 Games"]:
-            ump2 = umpA
-            ump1 = umpB
-        else:
-            ump2 = umpB
-            ump1 = umpA
-        if len(umpMaster.loc[ump2]["game"]) == 2 and len(umpMaster.loc[ump1]["game"]) == 1:
-            objAfter += not2gamesPenalty + TooManyGamesPen
-        if len(umpMaster.loc[ump1]["game"]) == 2 and len(umpMaster.loc[ump2]["game"]) == 1:
-            objBefore += not2gamesPenalty + TooManyGamesPen
-        if len(umpMaster.loc[ump2]["game"]) == 2 and len(umpMaster.loc[ump1]["game"]) == 0:
-            objBefore += noGamePenalty
-            objAfter += noGamePenalty + TooManyGamesPen
-        if len(umpMaster.loc[ump1]["game"]) == 2 and len(umpMaster.loc[ump2]["game"]) == 0:
-            objBefore += TooManyGamesPen + noGamePenalty
-            objAfter += noGamePenalty
-        if len(umpMaster.loc[ump2]["game"]) == 1 and len(umpMaster.loc[ump1]["game"]) == 0:
-            objBefore += not2gamesPenalty + noGamePenalty
-            objAfter += noGamePenalty
-        if len(umpMaster.loc[ump1]["game"]) == 1 and len(umpMaster.loc[ump2]["game"]) == 0:
-            objBefore += noGamePenalty
-            objAfter += not2gamesPenalty + noGamePenalty
-    res = objAfter - objBefore
-    return res
-
-
-#objctive difference when switching one ump with 2 Games and 2 umpires with one game respectively
-def objectdiffereceThree(umpA, umpB, umpC):
-    objBefore = 0
-    objAfter = 0
-    upCatPenalty = 10
-    downCatPenalty = 5
-    not2gamesPenalty = 50
-    noGamePenalty = 10 ** 5
-    TooManyGamesPen = 10 ** 6
-    for i in umpMaster.loc[umpA]["working category"]:
-        diffBefore = ord(umpMaster.loc[umpA]["Category"]) - ord(i)
-        if diffBefore < 0:
-            objBefore += downCatPenalty * (-1) * diffBefore
-        elif diffBefore > 0:
-            objBefore += upCatPenalty * diffBefore
-        diffAfter = ord(umpMaster.loc[umpC]["Category"]) - ord(i)
-        if diffAfter < 0:
-            objAfter += downCatPenalty * (-1) * diffAfter
-        elif diffAfter > 0:
-            objAfter += upCatPenalty * diffAfter
-    for i in umpMaster.loc[umpB]["working category"]:
-        diffBefore = ord(umpMaster.loc[umpB]["Category"]) - ord(i)
-        if diffBefore < 0:
-            objBefore += downCatPenalty * (-1) * diffBefore
-        elif diffBefore > 0:
-            objBefore += upCatPenalty * diffBefore
-        diffAfter = ord(umpMaster.loc[umpC]["Category"]) - ord(i)
-        if diffAfter < 0:
-            objAfter += downCatPenalty * (-1) * diffAfter
-        elif diffAfter > 0:
-            objAfter += upCatPenalty * diffAfter
-    j = umpMaster.loc[umpC]["working category"][0]
-    diffBefore = ord(umpMaster.loc[umpC]["Category"]) - ord(j)
-    if diffBefore < 0:
-        objBefore += downCatPenalty * (-1) * diffBefore
-    elif diffBefore > 0:
-        objBefore += upCatPenalty * diffBefore
-    diffAfter = ord(umpMaster.loc[umpA]["Category"]) - ord(j)
-    if diffAfter < 0:
-        objAfter += downCatPenalty * (-1) * diffAfter
-    elif diffAfter > 0:
-        objAfter += upCatPenalty * diffAfter
-    j = umpMaster.loc[umpC]["working category"][1]
-    diffBefore = ord(umpMaster.loc[umpC]["Category"]) - ord(j)
-    if diffBefore < 0:
-        objBefore += downCatPenalty * (-1) * diffBefore
-    elif diffBefore > 0:
-        objBefore += upCatPenalty * diffBefore
-    diffAfter = ord(umpMaster.loc[umpB]["Category"]) - ord(j)
-    if diffAfter < 0:
-        objAfter += downCatPenalty * (-1) * diffAfter
-    elif diffAfter > 0:
-        objAfter += upCatPenalty * diffAfter
-    res = objAfter - objBefore
-    return res
-
+# np.random.seed(10); random.seed(10)
 
 games = pd.read_excel('Data/Round4_LP.xlsx', engine='openpyxl')
 games = games.rename(columns={"Unnamed: 9": "Field.2"})
-games["Field"] = np.nan
-games["Field.1"] = np.nan
-games["Field.2"] = np.nan
-games["Boundary"] = np.nan
-games["Boundary.1"] = np.nan
+games["Field"] = "nan"
+games["Field.1"] = "nan"
+games["Field.2"] = "nan"
+games["Boundary"] = "nan"
+games["Boundary.1"] = "nan"
 
 club_names = []
 for index in games.index:
@@ -204,7 +29,7 @@ games["Teams"] = club_names
 umps = pd.read_excel('Data/LP_Umps2021.xlsx', engine='openpyxl')
 availability = pd.read_excel('Data/LP_Umps2021.xlsx', sheet_name="Availability",
                              usecols="A,E", engine="openpyxl")
-playingUmps = pd.read_excel('Data/LP_playing_Rd4.xlsx', usecols="A,D",
+playingUmps = pd.read_excel('Data/Lp_playing_Rd4.xlsx', usecols="A,D",
                             engine="openpyxl")
 
 umpMaster = umps
@@ -213,6 +38,9 @@ umpAvail = availability
 umpMaster = umpMaster.set_index("Name")
 umpAvail = umpAvail.set_index("Names")
 playingUmps = playingUmps.set_index("Name")
+
+games = games.sort_values(by=["Venue Name", "Match Time"])
+games = games.reset_index(drop = True)
 
 # %% Only consider umpires who we have full data for
 
@@ -260,6 +88,8 @@ for entry in playingUmps.index:
 for entry in umpAvail.index:
     if entry not in umpMaster.index:
         umpAvail = umpAvail.drop(entry)
+        # print(entry)
+        
 
 for entry in umpMaster.index:
     if entry not in umpAvail.index:
@@ -276,8 +106,8 @@ for entry in umpAvail.index:
     if type(avail) == type(np.nan):
         umpAvail.loc[entry][0] = copy.deepcopy(allTimes)
 
-#print("\n******\n")
-#print(np.all(umpMaster.index == umpAvail.index))
+# print("\n******\n")
+# print(np.all(umpMaster.index == umpAvail.index))
 # %% Assign umpires to clubs they play for
 
 team = [np.nan for i in range(umpMaster.shape[0])]
@@ -315,6 +145,15 @@ for ump in umpAvail.index:
     if umpAvail.loc[ump][0] == "Unavailable":
         umpMaster = umpMaster.drop(ump)
         umpAvail = umpAvail.drop(ump)
+        # print(ump)
+        
+# print("\n******\n")
+
+# for ump in playingUmps.index:
+#     if ump not in umpMaster.index:
+#         print(ump)
+
+# print(np.all(umpMaster.index == umpAvail.index))
 
 # %%
 umpMaster = pd.concat([umpMaster, umpAvail], axis=1)
@@ -326,312 +165,288 @@ umpMaster = umpMaster[cols]
 # %%
 # greedy algorithm:
 
-u = [[] for i in range(games.shape[0])]
-v = [[] for i in range(umpMaster.shape[0])]
+    
+def bestUmp(Umps, Match, notAllowed, gamesLeft):
+        """ 
+        Umps - dataframe with full umpire details
+        Match - a single match 
+        notAllowed - a list of not allowed umpires      
+        """
+        cat = Match["Category"]
+        time = str(Match["Match Time"])
+        teams = Match["Teams"]
+        Umps = Umps.sample(frac=1) #randomise so schedule not always same
+        
+        if gamesLeft == 1:
+            potUmps = list(Umps.loc[Umps["Category"] == cat].index)
+            potUmps = sorted(potUmps, key=lambda ump: len(Umps.at[ump, "Available"]))
+            
+            for cand in potUmps:
+                if (time in Umps.at[cand, "Available"] and
+                    Umps.at[cand, "Club"] not in teams and 
+                    cand not in notAllowed and 
+                    Umps.at[cand, "2 Games"] == False):
+                    return cand
+                
+            # Try again but relax category condition
+            potUmps = list(Umps.index)
+            potUmps = sorted(potUmps, key=lambda ump: len(Umps.at[ump, "Available"]))
+            for cand in potUmps:
+                if (time in Umps.at[cand, "Available"] and
+                    Umps.at[cand, "Club"] not in teams and 
+                    cand not in notAllowed and
+                    Umps.at[cand, "2 Games"] == False):
+                    return cand
+                
+            # Drop the game requirement
+            for cand in potUmps:
+                if (time in Umps.at[cand, "Available"] and
+                    Umps.at[cand, "Club"] not in teams and 
+                    cand not in notAllowed):
+                    return cand
+        elif gamesLeft == 2:
+            potUmps = list(Umps.loc[Umps["Category"] == cat].index)
+            potUmps = sorted(potUmps, key=lambda ump: len(Umps.at[ump, "Available"]))
+            
+            for cand in potUmps:
+                if (time in Umps.at[cand, "Available"] and
+                    Umps.at[cand, "Club"] not in teams and 
+                    cand not in notAllowed and 
+                    Umps.at[cand, "2 Games"] == True):
+                    return cand
+                
+            # Try again but relax category condition
+            potUmps = list(Umps.index)
+            potUmps = sorted(potUmps, key=lambda ump: len(Umps.at[ump, "Available"]))
+            for cand in potUmps:
+                if (time in Umps.at[cand, "Available"] and
+                    Umps.at[cand, "Club"] not in teams and 
+                    cand not in notAllowed and
+                    Umps.at[cand, "2 Games"] == True):
+                    return cand
+                
+            # Drop the game requirement
+            for cand in potUmps:
+                if (time in Umps.at[cand, "Available"] and
+                    Umps.at[cand, "Club"] not in teams and 
+                    cand not in notAllowed):
+                    return cand
+        else:
+            potUmps = list(Umps.loc[Umps["Category"] == cat].index)
+            potUmps = sorted(potUmps, key=lambda ump: len(Umps.at[ump, "Available"]))
+            
+            for cand in potUmps:
+                if (time in Umps.at[cand, "Available"] and
+                    Umps.at[cand, "Club"] not in teams and 
+                    cand not in notAllowed):
+                    return cand
+                
+            # Try again but relax category condition
+            potUmps = list(Umps.index)
+            potUmps = sorted(potUmps, key=lambda ump: len(Umps.at[ump, "Available"]))
+            for cand in potUmps:
+                if (time in Umps.at[cand, "Available"] and
+                    Umps.at[cand, "Club"] not in teams and 
+                    cand not in notAllowed):
+                    return cand
+        
+        # Try returning some person
+        potUmps = list(Umps.index)
+        potUmps = sorted(potUmps, key=lambda ump: len(Umps.at[ump, "Available"]))
+        for cand in potUmps:
+            if cand not in notAllowed:
+                return cand
+        
+        return "ERROR"
+
+v = [0 for i in range(umpMaster.shape[0])]
 w = [[] for i in range(umpMaster.shape[0])]
-p = [[] for i in range(umpMaster.shape[0])]
-k = [[] for i in range(umpMaster.shape[0])]
-games['ump'] = u
-umpMaster['game'] = v
-umpMaster['working time'] = w
-umpMaster['working team'] = p
-umpMaster['working category'] = k
-l = [[] for i in range(games.shape[0])]
-games['Field'] = l
-l1 = [[] for i in range(games.shape[0])]
-games['Field.1'] = l1
-l2 = [[] for i in range(games.shape[0])]
-games['Field.2'] = l2
-games.set_index('Venue Name')
+q = [[] for i in range(umpMaster.shape[0])]
+u = [[] for i in range(games.shape[0])]
+n = [2 for i in range(games.shape[0])]
+t = [0 for i in range(games.shape[0])]
 
+umpMaster['ngames'] = v
+umpMaster['UmpCats'] = w
+umpMaster['GameIds'] = q
+games["ump"] = u
+games["Boundaries"] = u
+games["umpsNeeded"] = n
+games["boundUmps"] = t
+    
+fieldUmps = list(umpMaster.loc[umpMaster['Category'] != "E"].index)
+Fumps = copy.deepcopy(umpMaster.loc[fieldUmps])
 
-# same location initial solution
+# same location
 venueSet = games['Venue Name']
 venueSet = sorted(set(venueSet))
-teamMap = {i : {} for i in venueSet}
-cateGoryMap = {j : {} for j in venueSet}
-umpNumberMap = {k : {} for k in venueSet}
-indexMap = {l : {} for l in venueSet}
-timeAvailable = {m : [] for m in venueSet}
-typeMap = {n : {} for n in venueSet}
-for x in venueSet:
-    for i in games.index:
-        if games.loc[i]['Venue Name'] == x:
-            timeAvailable[x].append(str(games.loc[i]['Match Time']))
-            teamMap[x][str(games.loc[i]['Match Time'])] = games.loc[i]['Teams']
-            cateGoryMap[x][str(games.loc[i]['Match Time'])] = games.loc[i]['Category']
-            umpNumberMap[x][str(games.loc[i]['Match Time'])] = 0
-            indexMap[x][str(games.loc[i]['Match Time'])] = i
-            typeMap[x][str(games.loc[i]['Match Time'])] = []
-for x in venueSet:
-    for j in umpMaster.index:
-        if len(umpMaster.loc[j]['game']) == 2 or not umpMaster.loc[j]['2 Games'] or umpMaster.loc[j]['Category'] == "E":
-            continue
-        timeSet = sorted(set(timeAvailable[x]) & set(umpMaster.loc[j]['Available']))
-        if len(timeSet) >= 2:
-            filterTeamTime = []
-            for y in timeSet:
-                if x not in teamMap[x][y]:
-                    filterTeamTime.append(y)
-            if len(filterTeamTime) >= 2:
-                for z in filterTeamTime:
-   #                 if cateGoryMap[x][z] == umpMaster.loc[j]['Category']:
-                        games.loc[indexMap[x][z]]['ump'].append(j)
-                        if games.loc[indexMap[x][z]]['Field'] == []:
-                            games.loc[indexMap[x][z]]['Field'].append(j)
-                        else:
-                            games.loc[indexMap[x][z]]['Field.1'].append(j)
-                        umpNumberMap[x][z] += 1
-                        if umpNumberMap[x][z] >= 2:
-                            timeAvailable[x].remove(z)
-                        umpMaster.loc[j]['game'].append(x)
-                        umpMaster.loc[j]['working time'].append(z)
-                        umpMaster.loc[j]['working team'] += teamMap[x][z]
-                        umpMaster.loc[j]['working category'] += cateGoryMap[x][z]
-                        typeMap[x][z].append(2)
-                        indexNumber = filterTeamTime.index(z)
-                        if indexNumber + 1 <= len(filterTeamTime) - 1:
-                            anotherTime = filterTeamTime[indexNumber + 1]
-                        else:
-                            anotherTime = filterTeamTime[indexNumber - 1]
-                        games.loc[indexMap[x][anotherTime]]['ump'].append(j)
-                        if games.loc[indexMap[x][anotherTime]]['Field'] == []:
-                            games.loc[indexMap[x][anotherTime]]['Field'].append(j)
-                        else:
-                            games.loc[indexMap[x][anotherTime]]['Field.1'].append(j)
-                        umpNumberMap[x][anotherTime] += 1
-                        if umpNumberMap[x][anotherTime] >= 2:
-                            timeAvailable[x].remove(anotherTime)
-                        umpMaster.loc[j]['game'].append(x)
-                        umpMaster.loc[j]['working time'].append(anotherTime)
-                        umpMaster.loc[j]['working team'] += teamMap[x][anotherTime]
-                        umpMaster.loc[j]['working category'] += cateGoryMap[x][anotherTime]
-                        typeMap[x][anotherTime].append(2)
-                        break
+
+for ven in venueSet:
+    GroundMatches = games.loc[games['Venue Name'] == ven]
+    matchesLeft = GroundMatches.shape[0]
+    contUmps = []
+    
+    for match in GroundMatches.index:
+
+        newumps = []
+        FullMatch = games.loc[match]
+        # for a specific match
+        
+        # assign continuing umpires
+        notAllowed = copy.deepcopy(contUmps)
+        toRemove = []
+        for ump in notAllowed:
+            games.at[match, "ump"].append(ump)
+            umpMaster.at[ump, "ngames"] += 1
+            umpMaster.at[ump, "GameIds"].append(match)
+            umpMaster.at[ump, "UmpCats"].append(FullMatch["Category"])
+            games.at[match, "umpsNeeded"] -= 1    
+            contUmps.remove(ump)
+        
+        
+        # assign one new umpire to the match
+        if games.at[match, "umpsNeeded"] == 1:
+            newumps = [bestUmp(Fumps, FullMatch, notAllowed, matchesLeft)] 
+            if newumps[0] == "ERROR": break
+                
+            games.at[match, "ump"].append(newumps[0])
+            umpMaster.at[newumps[0], "ngames"] += 1
+            umpMaster.at[newumps[0], "GameIds"].append(match)
+            umpMaster.at[newumps[0], "UmpCats"].append(FullMatch["Category"])
+            games.at[match, "umpsNeeded"] -= 1
+        elif games.at[match, "umpsNeeded"] == 2:
+            newumps = [bestUmp(Fumps, FullMatch, [], matchesLeft)]
+            if newumps[0] == "ERROR": break
+        
+            notAllowed = [newumps[0]]
+            nextump = bestUmp(Fumps, FullMatch, notAllowed, matchesLeft)
+            newumps.append(nextump)
+            if newumps[1] == "ERROR": break
+        
+            for ump in newumps:
+                games.at[match, "ump"].append(ump)
+                umpMaster.at[ump, "ngames"] += 1
+                umpMaster.at[ump, "GameIds"].append(match)
+                umpMaster.at[ump, "UmpCats"].append(FullMatch["Category"])
+                games.at[match, "umpsNeeded"] -= 1        
+        
+        for ump in games.at[match, "ump"]:
+            if umpMaster.at[ump, "ngames"] == 1 and not umpMaster.at[ump, "2 Games"]:
+                Fumps = Fumps.drop(ump)
+            elif umpMaster.at[ump, "ngames"] == 2:
+                Fumps = Fumps.drop(ump)
+            else:
+                contUmps.append(ump)
+                
+        matchesLeft -= 1
+        
+        if matchesLeft == 0:
+            for ump in contUmps:
+                Fumps = Fumps.drop(ump)
+                    
+
+        
+        
+
+
+# %% OBJECTIVE FUNCTION
+example_sched = pd.read_excel('Data/Round4_LP_Example.xlsx', engine='openpyxl')
+example_sched = example_sched.rename(columns={"Unnamed: 9": "Field.2"})
+
+
+def objective(schedule, umpMaster):
+    obj = 0
+    upCatPenalty = 10
+    downCatPenalty = 5
+    not2gamesPenalty = 50
+    noGamePenalty = 10 ** 5
+    TooManyGamesPen = 10 ** 6
+    # Penalties for categories of matches that umpires do
+    for i in range(schedule.shape[0]):
+        matchCat = schedule.loc[i]["Category"]
+        u1 = schedule.loc[i]["Field"]
+        u2 = schedule.loc[i]["Field.1"]
+        u3 = schedule.loc[i]["Field.2"]
+        b1 = schedule.loc[i]["Boundary"]
+        b2 = schedule.loc[i]["Boundary.1"]
+        fieldumps = [u1, u2, u3]
+        for ump in fieldumps:
+            # make sure the entry is valid
+            if type(ump) == type('string') and ump != 'nan':
+                umpCat = umpMaster.loc[ump]["Category"]
+                diff = ord(umpCat) - ord(matchCat)
+                if diff < 0:
+                    # ump is higher skill than match
+                    obj += downCatPenalty * (-1) * diff
+                elif diff > 0:
+                    # ump is lower skill than match
+                    obj += upCatPenalty * diff
+
+    # Penalty for not doing preferrred number of games
+    ump_numgames = defaultdict(lambda: 0)
+    for ump in schedule["Field"]:
+        ump_numgames[ump] += 1
+    for ump in schedule["Field.1"]:
+        ump_numgames[ump] += 1
+    for ump in schedule["Field.2"]:
+        ump_numgames[ump] += 1
+    for ump in schedule["Boundary"]:
+        ump_numgames[ump] += 1
+    for ump in schedule["Boundary.1"]:
+        ump_numgames[ump] += 1
+
+    # print(ump_numgames)
+    for ump in umpMaster.index:
+        if ump_numgames[ump] == 0:
+            obj += noGamePenalty
+        elif umpMaster.loc[ump]["2 Games"] == True and ump_numgames[ump] == 1:
+            obj += not2gamesPenalty
+        elif umpMaster.loc[ump]["2 Games"] == False and ump_numgames[ump] == 2:
+            # print(ump)
+            obj += TooManyGamesPen
+
+    print('objective =', obj)
+    return obj, schedule
+
+a, b = objective(example_sched, umpMaster)
+
+#%% Assign umps to position in df
 for i in games.index:
-    time = games.loc[i]['Match Time']
-    time = str(time)
-    Category = games.loc[i]['Category']
-    team = games.loc[i]['Teams']
-    for j in umpMaster.index:
-        if time in umpMaster.loc[j]['Available'] and abs(ord(umpMaster.loc[j]['Category']) - ord(Category)) <= 2 \
-                and umpMaster.loc[j]['Club'] not in team and len(games.loc[i]['ump']) < 2 \
-                and ((len(umpMaster.loc[j]['game']) < 2 and umpMaster.loc[j]['2 Games']) or (
-                len(umpMaster.loc[j]['game']) < 1 and not umpMaster.loc[j]['2 Games'])):
-            umpMaster.loc[j]['Available'].remove(time)
-            umpMaster.loc[j]['working time'].append(time)
-            games.loc[i]['ump'].append(j)
-            if games.loc[i]['Field'] == []:
-                games.loc[i]['Field'].append(j)
-            else:
-                games.loc[i]['Field.1'].append(j)
-            umpMaster.loc[j]['working team'] += team
-            umpMaster.loc[j]['game'].append(games.loc[i]['Venue Name'])
-            umpMaster.loc[j]['working category'] += games.loc[i]['Category']
-            if umpMaster.loc[j]['2 Games']:
-                typeMap[games.loc[i]['Venue Name']][time].append(2)
-            else:
-                typeMap[games.loc[i]['Venue Name']][time].append(1)
+    umps = games.loc[i]["ump"]
 
-a, b = objective(games, umpMaster)
-print(a)
+    if len(umps) == 1:
+        games.at[i,"Field"] = umps[0]
+    elif len(umps) == 2:
+        games.at[i,"Field"] = umps[0]
+        games.at[i,"Field.1"] = umps[1]
+    elif len(umps) == 3:
+        games.at[i,"Field"] = umps[0]
+        games.at[i,"Field.1"] = umps[1]
+        games.at[i,"Field.1"] = umps[2]
 
+boundUmps = list(umpMaster.loc[umpMaster['Category'] == "E"].index)
 
-# local step 1:
-umpSet = list(umpMaster.index)
-local = 0
-while local <= 10000:
-    a = random.choice(umpSet, )
-    while len(umpMaster.loc[a]['game']) == []:
-        a = random.choice(umpSet, )
-    b = copy.deepcopy(a)
-    while b == a or len(umpMaster.loc[b]['game']) != len(umpMaster.loc[a]['game']):
-        b = random.choice(umpSet)
-
-
-    if (all(item in umpMaster.loc[a]['Available'] for item in umpMaster.loc[b]['working time'])) \
-            and (all(item in umpMaster.loc[b]['Available'] for item in umpMaster.loc[a]['working time']))\
-            and umpMaster.loc[b]['Club'] not in umpMaster.loc[a]['working team']\
-            and umpMaster.loc[a]['Club'] not in umpMaster.loc[b]['working team']\
-            and objectdifferece(a, b) < 0:
-        for i in range(len(umpMaster.loc[a]['game'])):
-            if games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]]['Field'] == [a]:
-                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]][
-                    'Field'].clear()
-                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]][
-                    'Field'].append(b)
-            else:
-                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]][
-                    'Field.1'].clear()
-                games.loc[indexMap[umpMaster.loc[a]['game'][i]][umpMaster.loc[a]['working time'][i]]][
-                    'Field.1'].append(b)
-        for i in range(len(umpMaster.loc[a]['game'])):
-            if games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]]['Field'] == [b]:
-                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]][
-                    'Field'].clear()
-                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]][
-                    'Field'].append(a)
-            else:
-                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]][
-                    'Field.1'].clear()
-                games.loc[indexMap[umpMaster.loc[b]['game'][i]][umpMaster.loc[b]['working time'][i]]][
-                    'Field.1'].append(a)
-        tempWorkingTime = copy.deepcopy(umpMaster.loc[a]['working time'])
-        umpMaster.loc[a]['working time'] = copy.deepcopy(umpMaster.loc[b]['working time'])
-        umpMaster.loc[b]['working time'] = copy.deepcopy(tempWorkingTime)
-        tempWorkingTeam = copy.deepcopy(umpMaster.loc[a]['working team'])
-        umpMaster.loc[a]['working team'] = copy.deepcopy(umpMaster.loc[b]['working team'])
-        umpMaster.loc[b]['working team'] = copy.deepcopy(tempWorkingTeam)
-        tempWorkingCategory = copy.deepcopy(umpMaster.loc[a]['working category'])
-        umpMaster.loc[a]['working category'] = copy.deepcopy(umpMaster.loc[b]['working category'])
-        umpMaster.loc[b]['working category'] = copy.deepcopy(tempWorkingCategory)
-        tempWorkingGame = copy.deepcopy(umpMaster.loc[a]['game'])
-        umpMaster.loc[a]['game'] = copy.deepcopy(umpMaster.loc[b]['game'])
-        umpMaster.loc[b]['game'] = copy.deepcopy(tempWorkingGame)
-        if len(umpMaster.loc[b]['game']) != len(umpMaster.loc[b]['working time']):
-            print('change')
-
-#facility search
-
-    c = random.choice(umpSet)
-    while not umpMaster.loc[c]['2 Games'] or not len(umpMaster.loc[c]['game']) == 2:
-        c = random.choice(umpSet)
-    venue = random.choice(venueSet)
-    timeSS = timeAvailable[venue]
-    lenghth = len(timeSS)
-    while lenghth == 0 or lenghth == 1:
-        venue = random.choice(venueSet)
-        timeSS = timeAvailable[venue]
-        lenghth = len(timeSS)
-    num = random.randint(0, lenghth-1)
-    if num >= lenghth/2.0:
-        a = num
-        b = num - 1
-    else:
-        a = num
-        b = num + 1
-    #print(lenghth)
-    #print(num)
-    #print(b)
-
-
-
-    if 1 in typeMap[venue][timeSS[a]] and 1 in typeMap[venue][timeSS[b]]:
-        umpA = games.loc[indexMap[venue][timeSS[a]]]['Field'][0]
-        if umpMaster.loc[umpA]['2 Games'] == True:
-            umpA = games.loc[indexMap[venue][timeSS[a]]]['Field.1'][0]
-        umpB = games.loc[indexMap[venue][timeSS[b]]]['Field'][0]
-        if umpMaster.loc[umpB]['2 Games'] == True:
-            umpB = games.loc[indexMap[venue][timeSS[b]]]['Field.1'][0]
-        if (all(item in umpMaster.loc[umpB]['Available'] for item in umpMaster.loc[umpA]['working time']))\
-        and (all(item in umpMaster.loc[c]['Available'] for item in umpMaster.loc[umpB]['working time']))\
-        and umpMaster.loc[c]['working time'][0] in umpMaster.loc[umpA]['Available']\
-        and umpMaster.loc[c]['working time'][1] in umpMaster.loc[umpB]['Available']\
-        and umpMaster.loc[c]['Club'] not in umpMaster.loc[umpA]['working team']\
-        and umpMaster.loc[c]['Club'] not in umpMaster.loc[umpB]['working team']\
-        and umpMaster.loc[umpB]['Club'] not in umpMaster.loc[c]['working team']\
-        and umpMaster.loc[umpA]['Club'] not in umpMaster.loc[c]['working team']\
-        and objectdiffereceThree(umpA,umpB,c) < 0:
-            a = umpA
-            b = umpB
-            if games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]]['Field'] == [a]:
-
-                games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
-                    'Field'].clear()
-                games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
-                    'Field'].append(c)
-
-            else:
-                games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
-                    'Field.1'].clear()
-                games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
-                    'Field.1'].append(c)
-
-
-            if games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]]['Field'] == [b]:
-                games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
-                    'Field'].clear()
-                games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
-                    'Field'].append(c)
-            else:
-                games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
-                    'Field.1'].clear()
-                games.loc[indexMap[umpMaster.loc[b]['game'][0]][umpMaster.loc[b]['working time'][0]]][
-                    'Field.1'].append(c)
-            if games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]]['Field'] == [c]:
-                games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
-                    'Field'].clear()
-                games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
-                    'Field'].append(a)
-            else:
-                games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
-                    'Field.1'].clear()
-                games.loc[indexMap[umpMaster.loc[c]['game'][0]][umpMaster.loc[c]['working time'][0]]][
-                    'Field.1'].append(a)
-            if games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]]['Field'] == [c]:
-                games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
-                    'Field'].clear()
-                games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
-                    'Field'].append(b)
-            else:
-                games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
-                    'Field.1'].clear()
-                games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
-                    'Field.1'].append(b)
-
-
-
-            #if len(umpMaster.loc[c]['working time']) != len(umpMaster.loc[c]['game']):
-            #    print(umpMaster.loc[c]['working time'])
-            #if len(umpMaster.loc[b]['working time']) != 1:
-            #    print(umpMaster.loc[b]['working time'])
-            #if len(umpMaster.loc[a]['working time']) != 1:
-            #    print(umpMaster.loc[a]['working time'])
-
-
-            tempWorkingTime = umpMaster.loc[c]['working time']
-
-            umpMaster.loc[c]['working time'] = []
-            umpMaster.loc[c]['working time'].append(umpMaster.loc[a]['working time'][0])
-            umpMaster.loc[c]['working time'].append(umpMaster.loc[b]['working time'][0])
-            umpMaster.loc[a]['working time'] = [tempWorkingTime[0]]
-            umpMaster.loc[b]['working time'] = [tempWorkingTime[1]]
-
-
-
-
-            tempWorkingTeam = umpMaster.loc[c]['working team']
-            umpMaster.loc[c]['working team'] = []
-            umpMaster.loc[c]['working team'].append(umpMaster.loc[a]['working team'][0])
-            umpMaster.loc[c]['working team'].append(umpMaster.loc[b]['working team'][0])
-            umpMaster.loc[a]['working team'] = [tempWorkingTeam[0]]
-            umpMaster.loc[b]['working team'] = [tempWorkingTeam[1]]
-            tempWorkingCategory = umpMaster.loc[c]['working category']
-            umpMaster.loc[c]['working category'] = []
-            umpMaster.loc[c]['working category'].append(umpMaster.loc[a]['working category'][0])
-            umpMaster.loc[c]['working category'].append(umpMaster.loc[b]['working category'][0])
-            umpMaster.loc[a]['working category'] = [tempWorkingCategory[0]]
-            umpMaster.loc[b]['working category'] = [tempWorkingCategory[1]]
-            tempWorkingGame = umpMaster.loc[c]['game']
-            umpMaster.loc[c]['game'] = []
-            umpMaster.loc[c]['game'].append(umpMaster.loc[a]['game'][0])
-            umpMaster.loc[c]['game'].append(umpMaster.loc[b]['game'][0])
-            umpMaster.loc[a]['game'] = [tempWorkingGame[0]]
-            umpMaster.loc[b]['game'] = [tempWorkingGame[1]]
-            z
-
-    local +=1
-
-
-            #switch ump a and  ump b with one 2 games ump
-
-
-
-
-
-
-
-
-c, d = objective(games, umpMaster)
-print(c)
-
+for game in games.loc[games['Category'] == "A"].index:
+    venue = games.at[game, "Venue Name"]
+    if games.at[game, "Match Time"] == dt.time(13,0):
+        for ump in boundUmps:
+            if(len(umpMaster.at[ump, "GameIds"]) == 0 and 
+               games.at[game, "boundUmps"] <= 1 and 
+               str(dt.time(13,0)) in umpMaster.at[ump, "Available"]):
+                # assign to first game 
+                umpMaster.at[ump, "GameIds"].append(game)
+                games.at[game, "Boundaries"].append(ump)
+                games.at[game, "boundUmps"] += 1
+                umpMaster.at[ump, "ngames"] += 1
+                
+                # assign to second game if wanted 
+                if (umpMaster.at[ump, "2 Games"] == True and 
+                    games.at[game+1, "Venue Name"] == venue):
+                    
+                    umpMaster.at[ump, "GameIds"].append(game+1)
+                    games.at[game+1, "Boundaries"].append(ump)
+                    games.at[game+1, "boundUmps"] += 1
+                    umpMaster.at[ump, "ngames"] += 1
+                    
+# In practice remaining umpires can easily be assigned manually.
+                
