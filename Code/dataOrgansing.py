@@ -1,30 +1,4 @@
-import random
-
-import numpy as np
-import pandas as pd
-import datetime as dt
-import copy
-from collections import defaultdict
-import openpyxl
-
-pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows', None)
-random.seed(10086)
-
-def objective(schedule, umpMaster):
-    obj = 0
-    upCatPenalty = 10
-    downCatPenalty = 5
-    not2gamesPenalty = 50
-    noGamePenalty = 10 ** 5
-    TooManyGamesPen = 10 ** 6
-    # Penalties for categories of matches that umpires do
-    for i in range(schedule.shape[0]):
-        matchCat = schedule.loc[i]["Category"]
-        u1 = schedule.loc[i]["Field"][0]
-        u2 = schedule.loc[i]["Field.1"][0]
-        u3 = schedule.loc[i]["Field.2"]
-        b1 = schedule.loc[i]["Boundary"]
+b1 = schedule.loc[i]["Boundary"]
         b2 = schedule.loc[i]["Boundary.1"]
         fieldumps = [u1, u2, u3]
         for ump in fieldumps:
@@ -491,8 +465,7 @@ while local <= 10000:
         tempWorkingGame = copy.deepcopy(umpMaster.loc[a]['game'])
         umpMaster.loc[a]['game'] = copy.deepcopy(umpMaster.loc[b]['game'])
         umpMaster.loc[b]['game'] = copy.deepcopy(tempWorkingGame)
-        if len(umpMaster.loc[b]['game']) != len(umpMaster.loc[b]['working time']):
-            print('change')
+
 
 #facility search
 
@@ -526,7 +499,7 @@ while local <= 10000:
         umpB = games.loc[indexMap[venue][timeSS[b]]]['Field'][0]
         if umpMaster.loc[umpB]['2 Games'] == True:
             umpB = games.loc[indexMap[venue][timeSS[b]]]['Field.1'][0]
-        if (all(item in umpMaster.loc[umpB]['Available'] for item in umpMaster.loc[umpA]['working time']))\
+        if (all(item in umpMaster.loc[c]['Available'] for item in umpMaster.loc[umpA]['working time']))\
         and (all(item in umpMaster.loc[c]['Available'] for item in umpMaster.loc[umpB]['working time']))\
         and umpMaster.loc[c]['working time'][0] in umpMaster.loc[umpA]['Available']\
         and umpMaster.loc[c]['working time'][1] in umpMaster.loc[umpB]['Available']\
@@ -535,8 +508,11 @@ while local <= 10000:
         and umpMaster.loc[umpB]['Club'] not in umpMaster.loc[c]['working team']\
         and umpMaster.loc[umpA]['Club'] not in umpMaster.loc[c]['working team']\
         and objectdiffereceThree(umpA,umpB,c) < 0:
+
             a = umpA
             b = umpB
+            if len(umpMaster.loc[a]['working time']) == 2 or len(umpMaster.loc[b]['working time']) == 2:
+                continue
             if games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]]['Field'] == [a]:
 
                 games.loc[indexMap[umpMaster.loc[a]['game'][0]][umpMaster.loc[a]['working time'][0]]][
@@ -582,23 +558,15 @@ while local <= 10000:
                 games.loc[indexMap[umpMaster.loc[c]['game'][1]][umpMaster.loc[c]['working time'][1]]][
                     'Field.1'].append(b)
 
-
-
-            #if len(umpMaster.loc[c]['working time']) != len(umpMaster.loc[c]['game']):
-            #    print(umpMaster.loc[c]['working time'])
-            #if len(umpMaster.loc[b]['working time']) != 1:
-            #    print(umpMaster.loc[b]['working time'])
-            #if len(umpMaster.loc[a]['working time']) != 1:
-            #    print(umpMaster.loc[a]['working time'])
-
-
-            tempWorkingTime = umpMaster.loc[c]['working time']
-
-            umpMaster.loc[c]['working time'] = []
-            umpMaster.loc[c]['working time'].append(umpMaster.loc[a]['working time'][0])
-            umpMaster.loc[c]['working time'].append(umpMaster.loc[b]['working time'][0])
-            umpMaster.loc[a]['working time'] = [tempWorkingTime[0]]
-            umpMaster.loc[b]['working time'] = [tempWorkingTime[1]]
+            print(umpMaster.loc[umpA]['working time'])
+            tempWorkingTime = copy.deepcopy(umpMaster.loc[c]['working time'])
+            print(umpMaster.loc[c]['working time'])
+            umpMaster.loc[c]['working time'].clear()
+            print(umpMaster.loc[a]['working time'])
+            umpMaster.loc[c]['working time'].append(copy.deepcopy(umpMaster.loc[a]['working time'][0]))
+            umpMaster.loc[c]['working time'].append(copy.deepcopy(umpMaster.loc[b]['working time'][0]))
+            umpMaster.loc[a]['working time'] = copy.deepcopy([tempWorkingTime[0]])
+            umpMaster.loc[b]['working time'] = copy.deepcopy([tempWorkingTime[1]])
 
 
 
@@ -637,4 +605,5 @@ while local <= 10000:
 
 c, d = objective(games, umpMaster)
 print(c)
+
 
